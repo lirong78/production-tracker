@@ -536,7 +536,6 @@ async function saveData() {
   saveBtn.textContent = '保存中...';
   saveBtn.disabled = true;
 
-  try {
     const lineId = document.getElementById('lineSelect').value;
     if (!lineId) { alert('请选择线体'); isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false; return; }
 
