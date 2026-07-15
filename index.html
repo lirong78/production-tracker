@@ -731,29 +731,34 @@ async function renderBoard() {
         <canvas id="chart_${lineData.lineId}" style="width:100%!important;height:220px!important"></canvas>
         <!-- 每小时产量表格 -->
         <div style="margin-top:12px;overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead>
-              <tr style="background:#f5f5f5;border-bottom:2px solid #ddd">
-                <th style="padding:6px;text-align:center;border:1px solid #ddd">时段</th>
-                ${lineData.hourlyData.map(h => `<th style="padding:6px;text-align:center;border:1px solid #ddd;min-width:50px">${h.hour.replace(':00-','~').replace(':00','')}</th>`).join('')}
+              <tr style="background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff">
+                <th style="padding:10px 6px;text-align:center;border:1px solid #1565c0;min-width:60px">项目</th>
+                ${lineData.hourlyData.map(h => `<th style="padding:10px 6px;text-align:center;border:1px solid #1565c0;min-width:55px">${h.hour.replace(':00-','~').replace(':00','')}</th>`).join('')}
               </tr>
             </thead>
             <tbody>
-              <tr style="background:#e8f5e9">
-                <td style="padding:6px;text-align:center;font-weight:600;border:1px solid #ddd">达成</td>
-                ${lineData.hourlyData.map(h => `<td style="padding:6px;text-align:center;border:1px solid #ddd;color:${h.isMet ? '#4caf50' : '#f44336'};font-weight:600">${h.achieved}</td>`).join('')}
+              <tr style="background:#e3f2fd">
+                <td style="padding:8px 6px;text-align:center;font-weight:700;border:1px solid #bbdefb;color:#1565c0;font-size:12px">型号</td>
+                ${lineData.hourlyData.map(h => `<td style="padding:8px 6px;text-align:center;border:1px solid #bbdefb;font-weight:600;color:#1565c0;font-size:11px">${h.model || '-'}</td>`).join('')}
               </tr>
-              <tr style="background:#fff3e0">
-                <td style="padding:6px;text-align:center;font-weight:600;border:1px solid #ddd">目标</td>
-                ${lineData.hourlyData.map(h => `<td style="padding:6px;text-align:center;border:1px solid #ddd">${h.target}</td>`).join('')}
+              <tr style="background:#e8f5e9">
+                <td style="padding:10px 6px;text-align:center;font-weight:700;border:1px solid #c8e6c9;color:#2e7d32;font-size:13px">达成</td>
+                ${lineData.hourlyData.map(h => `<td style="padding:10px 6px;text-align:center;border:1px solid #c8e6c9;color:#fff;font-weight:800;font-size:18px;background:${h.isMet ? '#4caf50' : '#f44336'};text-shadow:0 1px 2px rgba(0,0,0,0.3)">${h.achieved}</td>`).join('')}
+              </tr>
+              <tr style="background:#fff8e1">
+                <td style="padding:8px 6px;text-align:center;font-weight:700;border:1px solid #ffecb3;color:#f57c00;font-size:13px">目标</td>
+                ${lineData.hourlyData.map(h => `<td style="padding:8px 6px;text-align:center;border:1px solid #ffecb3;color:#f57c00;font-weight:700;font-size:15px">${h.target}</td>`).join('')}
               </tr>
               <tr style="background:#fafafa">
-                <td style="padding:6px;text-align:center;font-weight:600;border:1px solid #ddd">差异</td>
+                <td style="padding:8px 6px;text-align:center;font-weight:700;border:1px solid #e0e0e0;color:#616161;font-size:12px">差异</td>
                 ${lineData.hourlyData.map(h => {
                   const diff = h.achieved - h.target;
                   const color = diff >= 0 ? '#4caf50' : '#f44336';
+                  const bg = diff >= 0 ? '#e8f5e9' : '#ffebee';
                   const text = diff >= 0 ? `+${diff}` : `${diff}`;
-                  return `<td style="padding:6px;text-align:center;border:1px solid #ddd;color:${color};font-weight:600">${text}</td>`;
+                  return `<td style="padding:8px 6px;text-align:center;border:1px solid #e0e0e0;color:${color};font-weight:800;font-size:14px;background:${bg}">${text}</td>`;
                 }).join('')}
               </tr>
             </tbody>
