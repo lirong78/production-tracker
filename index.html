@@ -524,11 +524,21 @@ function updateSummary() {
 }
 
 // 保存数据到 Supabase
+let isSaving = false; // 保存状态锁
+
 async function saveData() {
   if (!db) { alert('❌ 数据库未连接，请刷新页面重试'); return; }
+  if (isSaving) { alert('正在保存中，请稍候...'); return; }
+  
+  isSaving = true;
+  const saveBtn = document.querySelector('.btn-primary');
+  const originalText = saveBtn.textContent;
+  saveBtn.textContent = '保存中...';
+  saveBtn.disabled = true;
 
-  const lineId = document.getElementById('lineSelect').value;
-  if (!lineId) { alert('请选择线体'); return; }
+  try {
+    const lineId = document.getElementById('lineSelect').value;
+    if (!lineId) { alert('请选择线体'); isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false; return; }
 
   const recordDate = getSelectedDate();
   const lineName = getLineName(lineId);
@@ -562,34 +572,38 @@ async function saveData() {
     }
   });
 
-  if (hasMissingReason) { alert('未达标的时段必须填写异常原因！'); return; }
-  if (slots.length === 0) { alert('请至少选择一个型号！'); return; }
+  if (hasMissingReason) { alert('未达标的时段必须填写异常原因！'); isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false; return; }
+  if (slots.length === 0) { alert('请至少选择一个型号！'); isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false; return; }
 
-  // 使用 upsert 覆盖已有数据（需要数据库有唯一约束）
-  const { error } = await db.from('production_records').upsert(slots, {
-    onConflict: 'line_name,record_date,hour_slot',
-    ignoreDuplicates: false
-  });
-
-  if (error) {
-    console.error('保存失败:', error);
-    // 如果 upsert 失败（可能是唯一约束不存在），回退到 delete+insert
-    if (error.message && error.message.includes('constraint')) {
-      console.log('upsert 失败，回退到 delete+insert 模式');
-      const { error: delErr } = await db.from('production_records')
-        .delete()
-        .eq('line_name', lineName)
-        .eq('record_date', recordDate);
-      if (delErr) { alert('❌ 删除旧数据失败: ' + delErr.message); return; }
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const { error: insErr } = await db.from('production_records').insert(slots);
-      if (insErr) { alert('❌ 保存失败: ' + insErr.message); return; }
-    } else {
-      alert('❌ 保存失败: ' + error.message);
-      return;
-    }
+  // 先删除旧数据，再插入新数据（避免重复）
+  const { error: delErr } = await db.from('production_records')
+    .delete()
+    .eq('line_name', lineName)
+    .eq('record_date', recordDate);
+  
+  if (delErr) { 
+    console.error('删除旧数据失败:', delErr);
+    alert('❌ 删除旧数据失败: ' + delErr.message); 
+    isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false;
+    return; 
+  }
+  
+  // 等待删除完成
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  // 插入新数据
+  const { error: insErr } = await db.from('production_records').insert(slots);
+  
+  if (insErr) { 
+    console.error('保存失败:', insErr);
+    alert('❌ 保存失败: ' + insErr.message); 
+    isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false;
+    return; 
   }
 
+  isSaving = false;
+  saveBtn.textContent = originalText;
+  saveBtn.disabled = false;
   alert('✅ ' + recordDate + ' 数据保存成功！');
 }
 
