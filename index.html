@@ -901,6 +901,25 @@ function renderLeaderboard(allLineData, boardDate) {
             ${lineData.hasData ? `<div style="font-size:11px;color:#888">达成${lineData.totalAchieved}/目标${lineData.totalTarget}</div>` : '<div style="font-size:11px;color:#999">未录入</div>'}
           </div>
         </div>
+        ${lineData.hasData ? `
+        <div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed #ddd">
+          <div style="flex:1;background:#e8f5e9;border-radius:6px;padding:8px;text-align:center">
+            <div style="font-size:11px;color:#666">实际达成</div>
+            <div style="font-size:20px;font-weight:700;color:#4caf50">${lineData.totalAchieved}</div>
+            <div style="font-size:10px;color:#888">台</div>
+          </div>
+          <div style="flex:1;background:#fff3e0;border-radius:6px;padding:8px;text-align:center">
+            <div style="font-size:11px;color:#666">目标产量</div>
+            <div style="font-size:20px;font-weight:700;color:#ff9800">${lineData.totalTarget}</div>
+            <div style="font-size:10px;color:#888">台</div>
+          </div>
+          <div style="flex:1;background:${lineData.totalAchieved - lineData.totalTarget >= 0 ? '#e8f5e9' : '#ffebee'};border-radius:6px;padding:8px;text-align:center">
+            <div style="font-size:11px;color:#666">差异</div>
+            <div style="font-size:20px;font-weight:700;color:${lineData.totalAchieved - lineData.totalTarget >= 0 ? '#4caf50' : '#f44336'}">${lineData.totalAchieved - lineData.totalTarget >= 0 ? '+' : ''}${lineData.totalAchieved - lineData.totalTarget}</div>
+            <div style="font-size:10px;color:#888">台</div>
+          </div>
+        </div>
+        ` : ''}
     `;
 
     // 如果有数据，显示每个时间段的达成率
