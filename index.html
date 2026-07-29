@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>产线小时达成录入</title>
-<script src="https://dishuachan-1450712972.cos.ap-guangzhou.myqcloud.com/js/html2canvas.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; }
@@ -187,8 +187,8 @@ canvas { width: 100% !important; height: 300px !important; }
   </div>
 </div>
 
-<script src="https://dishuachan-1450712972.cos.ap-guangzhou.myqcloud.com/js/chart.js"></script>
-<script src="https://dishuachan-1450712972.cos.ap-guangzhou.myqcloud.com/js/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="supabase.js"></script>
 <script>
 const SUPABASE_URL = 'https://jtcoqlpxdubcmdpawyiu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_g9LTQJUkOYi2F0AU8wmPbw_Gb-kxdI_';
@@ -524,20 +524,11 @@ function updateSummary() {
 }
 
 // 保存数据到 Supabase
-let isSaving = false; // 保存状态锁
-
 async function saveData() {
   if (!db) { alert('❌ 数据库未连接，请刷新页面重试'); return; }
-  if (isSaving) { alert('正在保存中，请稍候...'); return; }
-  
-  isSaving = true;
-  const saveBtn = document.querySelector('.btn-primary');
-  const originalText = saveBtn.textContent;
-  saveBtn.textContent = '保存中...';
-  saveBtn.disabled = true;
 
-    const lineId = document.getElementById('lineSelect').value;
-    if (!lineId) { alert('请选择线体'); isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false; return; }
+  const lineId = document.getElementById('lineSelect').value;
+  if (!lineId) { alert('请选择线体'); return; }
 
   const recordDate = getSelectedDate();
   const lineName = getLineName(lineId);
@@ -571,38 +562,34 @@ async function saveData() {
     }
   });
 
-  if (hasMissingReason) { alert('未达标的时段必须填写异常原因！'); isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false; return; }
-  if (slots.length === 0) { alert('请至少选择一个型号！'); isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false; return; }
+  if (hasMissingReason) { alert('未达标的时段必须填写异常原因！'); return; }
+  if (slots.length === 0) { alert('请至少选择一个型号！'); return; }
 
-  // 先删除旧数据，再插入新数据（避免重复）
-  const { error: delErr } = await db.from('production_records')
-    .delete()
-    .eq('line_name', lineName)
-    .eq('record_date', recordDate);
-  
-  if (delErr) { 
-    console.error('删除旧数据失败:', delErr);
-    alert('❌ 删除旧数据失败: ' + delErr.message); 
-    isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false;
-    return; 
-  }
-  
-  // 等待删除完成
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  // 插入新数据
-  const { error: insErr } = await db.from('production_records').insert(slots);
-  
-  if (insErr) { 
-    console.error('保存失败:', insErr);
-    alert('❌ 保存失败: ' + insErr.message); 
-    isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false;
-    return; 
+  // 使用 upsert 覆盖已有数据（需要数据库有唯一约束）
+  const { error } = await db.from('production_records').upsert(slots, {
+    onConflict: 'line_name,record_date,hour_slot',
+    ignoreDuplicates: false
+  });
+
+  if (error) {
+    console.error('保存失败:', error);
+    // 如果 upsert 失败（可能是唯一约束不存在），回退到 delete+insert
+    if (error.message && error.message.includes('constraint')) {
+      console.log('upsert 失败，回退到 delete+insert 模式');
+      const { error: delErr } = await db.from('production_records')
+        .delete()
+        .eq('line_name', lineName)
+        .eq('record_date', recordDate);
+      if (delErr) { alert('❌ 删除旧数据失败: ' + delErr.message); return; }
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const { error: insErr } = await db.from('production_records').insert(slots);
+      if (insErr) { alert('❌ 保存失败: ' + insErr.message); return; }
+    } else {
+      alert('❌ 保存失败: ' + error.message);
+      return;
+    }
   }
 
-  isSaving = false;
-  saveBtn.textContent = originalText;
-  saveBtn.disabled = false;
   alert('✅ ' + recordDate + ' 数据保存成功！');
 }
 
@@ -742,41 +729,6 @@ async function renderBoard() {
           </div>
         </div>
         <canvas id="chart_${lineData.lineId}" style="width:100%!important;height:220px!important"></canvas>
-        <!-- 每小时产量表格 -->
-        <div style="margin-top:12px;overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:13px">
-            <thead>
-              <tr style="background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff">
-                <th style="padding:10px 6px;text-align:center;border:1px solid #1565c0;min-width:60px">项目</th>
-                ${lineData.hourlyData.map(h => `<th style="padding:10px 6px;text-align:center;border:1px solid #1565c0;min-width:55px">${h.hour.replace(':00-','~').replace(':00','')}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              <tr style="background:#e3f2fd">
-                <td style="padding:8px 6px;text-align:center;font-weight:700;border:1px solid #bbdefb;color:#1565c0;font-size:12px">型号</td>
-                ${lineData.hourlyData.map(h => `<td style="padding:8px 6px;text-align:center;border:1px solid #bbdefb;font-weight:600;color:#1565c0;font-size:11px">${h.model || '-'}</td>`).join('')}
-              </tr>
-              <tr style="background:#e8f5e9">
-                <td style="padding:10px 6px;text-align:center;font-weight:700;border:1px solid #c8e6c9;color:#2e7d32;font-size:13px">达成</td>
-                ${lineData.hourlyData.map(h => `<td style="padding:10px 6px;text-align:center;border:1px solid #c8e6c9;color:#fff;font-weight:800;font-size:18px;background:${h.isMet ? '#4caf50' : '#f44336'};text-shadow:0 1px 2px rgba(0,0,0,0.3)">${h.achieved}</td>`).join('')}
-              </tr>
-              <tr style="background:#fff8e1">
-                <td style="padding:8px 6px;text-align:center;font-weight:700;border:1px solid #ffecb3;color:#f57c00;font-size:13px">目标</td>
-                ${lineData.hourlyData.map(h => `<td style="padding:8px 6px;text-align:center;border:1px solid #ffecb3;color:#f57c00;font-weight:700;font-size:15px">${h.target}</td>`).join('')}
-              </tr>
-              <tr style="background:#fafafa">
-                <td style="padding:8px 6px;text-align:center;font-weight:700;border:1px solid #e0e0e0;color:#616161;font-size:12px">差异</td>
-                ${lineData.hourlyData.map(h => {
-                  const diff = h.achieved - h.target;
-                  const color = diff >= 0 ? '#4caf50' : '#f44336';
-                  const bg = diff >= 0 ? '#e8f5e9' : '#ffebee';
-                  const text = diff >= 0 ? `+${diff}` : `${diff}`;
-                  return `<td style="padding:8px 6px;text-align:center;border:1px solid #e0e0e0;color:${color};font-weight:800;font-size:14px;background:${bg}">${text}</td>`;
-                }).join('')}
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </div>
     `;
 
@@ -919,25 +871,6 @@ function renderLeaderboard(allLineData, boardDate) {
             ${lineData.hasData ? `<div style="font-size:11px;color:#888">达成${lineData.totalAchieved}/目标${lineData.totalTarget}</div>` : '<div style="font-size:11px;color:#999">未录入</div>'}
           </div>
         </div>
-        ${lineData.hasData ? `
-        <div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed #ddd">
-          <div style="flex:1;background:#e8f5e9;border-radius:6px;padding:8px;text-align:center">
-            <div style="font-size:11px;color:#666">实际达成</div>
-            <div style="font-size:20px;font-weight:700;color:#4caf50">${lineData.totalAchieved}</div>
-            <div style="font-size:10px;color:#888">台</div>
-          </div>
-          <div style="flex:1;background:#fff3e0;border-radius:6px;padding:8px;text-align:center">
-            <div style="font-size:11px;color:#666">目标产量</div>
-            <div style="font-size:20px;font-weight:700;color:#ff9800">${lineData.totalTarget}</div>
-            <div style="font-size:10px;color:#888">台</div>
-          </div>
-          <div style="flex:1;background:${lineData.totalAchieved - lineData.totalTarget >= 0 ? '#e8f5e9' : '#ffebee'};border-radius:6px;padding:8px;text-align:center">
-            <div style="font-size:11px;color:#666">差异</div>
-            <div style="font-size:20px;font-weight:700;color:${lineData.totalAchieved - lineData.totalTarget >= 0 ? '#4caf50' : '#f44336'}">${lineData.totalAchieved - lineData.totalTarget >= 0 ? '+' : ''}${lineData.totalAchieved - lineData.totalTarget}</div>
-            <div style="font-size:10px;color:#888">台</div>
-          </div>
-        </div>
-        ` : ''}
     `;
 
     // 如果有数据，显示每个时间段的达成率
