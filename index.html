@@ -1143,6 +1143,20 @@ async function generateReasonSummary() {
       return;
     }
     
+    // 计算每条线的总产量和达成（所有记录，不只是异常记录）
+    const lineProduction = {};
+    data.forEach(record => {
+      const lineName = record.line_name || '';
+      const target = record.target_value || 0;
+      const achieved = record.achieved_value || 0;
+      
+      if (!lineProduction[lineName]) {
+        lineProduction[lineName] = { target: 0, achieved: 0 };
+      }
+      lineProduction[lineName].target += target;
+      lineProduction[lineName].achieved += achieved;
+    });
+    
     // 筛选有异常原因的记录
     const reasonRecords = data.filter(d => d.reason && d.reason.trim());
     
@@ -1165,7 +1179,7 @@ async function generateReasonSummary() {
       return 'other';
     }
     
-    // 按线体汇总
+    // 按线体汇总异常
     const lineStats = {};
     
     reasonRecords.forEach(record => {
@@ -1195,8 +1209,36 @@ async function generateReasonSummary() {
       lineStats[lineName].totalShortage += shortage;
     });
     
+    // 计算整体损失
+    let totalTarget = 0, totalAchieved = 0, totalLoss = 0;
+    let totalInternalLoss = 0, totalExternalLoss = 0, totalOtherLoss = 0;
+    
+    Object.values(lineStats).forEach(stats => {
+      totalLoss += stats.totalShortage;
+      Object.values(stats.reasons).forEach(reasonData => {
+        if (reasonData.category === 'internal') totalInternalLoss += reasonData.totalShortage;
+        else if (reasonData.category === 'external') totalExternalLoss += reasonData.totalShortage;
+        else totalOtherLoss += reasonData.totalShortage;
+      });
+    });
+    
+    Object.values(lineProduction).forEach(p => {
+      totalTarget += p.target;
+      totalAchieved += p.achieved;
+    });
+    
+    const overallStats = {
+      totalTarget,
+      totalAchieved,
+      totalLoss,
+      totalRate: totalTarget > 0 ? (totalAchieved / totalTarget * 100) : 0,
+      totalInternalLoss,
+      totalExternalLoss,
+      totalOtherLoss
+    };
+    
     // 构建 HTML
-    const html = buildReasonSummaryHtml(startDate, endDate, lineStats);
+    const html = buildReasonSummaryHtml(startDate, endDate, lineStats, lineProduction, overallStats);
     
     // 用 html2canvas 生成图片
     const tempDiv = document.createElement('div');
@@ -1230,17 +1272,55 @@ async function generateReasonSummary() {
 }
 
 // 构建异常汇总 HTML
-function buildReasonSummaryHtml(startDate, endDate, lineStats) {
+function buildReasonSummaryHtml(startDate, endDate, lineStats, lineProduction, overallStats) {
   const categoryColors = {
     internal: { bg: '#fff3e0', text: '#e65100', label: '内部' },
     external: { bg: '#e3f2fd', text: '#1565c0', label: '外部' },
     other: { bg: '#f5f5f5', text: '#616161', label: '其他' }
   };
   
+  const rateColor = (rate) => rate >= 100 ? '#4caf50' : rate >= 90 ? '#ff9800' : '#f44336';
+  
   let html = `
     <div style="padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
       <h2 style="text-align:center;color:#d32f2f;margin-bottom:8px;font-size:24px;">📋 异常原因汇总</h2>
       <p style="text-align:center;color:#666;margin-bottom:16px;font-size:14px;">${startDate} 至 ${endDate}</p>
+      
+      <!-- 整体损失汇总 -->
+      <div style="background:linear-gradient(135deg,#d32f2f,#b71c1c);color:#fff;border-radius:12px;padding:16px;margin-bottom:16px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px;text-align:center;">⚠️ 整体损失情况</div>
+        <div style="display:flex;justify-content:space-around;text-align:center;">
+          <div>
+            <div style="font-size:11px;opacity:0.85;">总损失</div>
+            <div style="font-size:24px;font-weight:700;">${overallStats.totalLoss.toLocaleString()}</div>
+            <div style="font-size:11px;opacity:0.85;">台</div>
+          </div>
+          <div style="border-left:1px solid rgba(255,255,255,0.3);"></div>
+          <div>
+            <div style="font-size:11px;opacity:0.85;">内部损失</div>
+            <div style="font-size:20px;font-weight:700;color:#ffcc80;">${overallStats.totalInternalLoss.toLocaleString()}</div>
+          </div>
+          <div style="border-left:1px solid rgba(255,255,255,0.3);"></div>
+          <div>
+            <div style="font-size:11px;opacity:0.85;">外部损失</div>
+            <div style="font-size:20px;font-weight:700;color:#90caf9;">${overallStats.totalExternalLoss.toLocaleString()}</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.2);display:flex;justify-content:space-around;text-align:center;">
+          <div>
+            <div style="font-size:11px;opacity:0.85;">总目标</div>
+            <div style="font-size:16px;font-weight:600;">${overallStats.totalTarget.toLocaleString()}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;opacity:0.85;">总达成</div>
+            <div style="font-size:16px;font-weight:600;">${overallStats.totalAchieved.toLocaleString()}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;opacity:0.85;">达成率</div>
+            <div style="font-size:16px;font-weight:700;color:${rateColor(overallStats.totalRate)};">${overallStats.totalRate.toFixed(1)}%</div>
+          </div>
+        </div>
+      </div>
   `;
   
   // 按总损失排序
@@ -1253,11 +1333,30 @@ function buildReasonSummaryHtml(startDate, endDate, lineStats) {
     if (match) leader = match[1];
     const shortName = lineName.replace(/（.+?）/, '');
     
+    // 获取该线的产量达成数据
+    const production = lineProduction[lineName] || { target: 0, achieved: 0 };
+    const lineRate = production.target > 0 ? (production.achieved / production.target * 100) : 0;
+    
     html += `
       <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <span style="font-size:16px;font-weight:600;color:#333;">${shortName}${leader ? '（' + leader + '）' : ''}</span>
-          <span style="font-size:14px;font-weight:600;color:#d32f2f;">总损失 ${stats.totalShortage.toLocaleString()} 台</span>
+          <span style="font-size:14px;font-weight:600;color:#d32f2f;">损失 ${stats.totalShortage.toLocaleString()} 台</span>
+        </div>
+        <!-- 产量达成数据 -->
+        <div style="background:#f9f9f9;border-radius:8px;padding:10px;margin-bottom:12px;display:flex;justify-content:space-around;text-align:center;">
+          <div>
+            <div style="font-size:11px;color:#888;">目标</div>
+            <div style="font-size:14px;font-weight:600;color:#333;">${production.target.toLocaleString()}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#888;">达成</div>
+            <div style="font-size:14px;font-weight:600;color:#333;">${production.achieved.toLocaleString()}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#888;">达成率</div>
+            <div style="font-size:14px;font-weight:700;color:${rateColor(lineRate)};">${lineRate.toFixed(1)}%</div>
+          </div>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
@@ -1293,6 +1392,7 @@ function buildReasonSummaryHtml(startDate, endDate, lineStats) {
   
   return html;
 }
+
 
 // 生成看板长图
 async function generateBoardImage() {
