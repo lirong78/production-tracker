@@ -3,8 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>产线小时达成录入</title>
-<script src="html2canvas.min.js"></script>
+<title>地刷车间 - 产线小时达成录入</title>
+<!-- 
+  产线小时产出追踪系统模板
+  使用方法：
+  1. 替换 地刷车间 为车间名称
+  2. 替换 https://jtcoqlpxdubcmdpawyiu.supabase.co 和 sb_publishable_g9LTQJUkOYi2F0AU8wmPbw_Gb-kxdI_ 为你的 Supabase 配置
+  3. 修改 TIME_SLOTS_START_HOUR 和 TIME_SLOTS_END_HOUR 设置时间段
+  4. 在 Supabase 数据库中配置线体和型号信息
+-->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; }
@@ -20,8 +28,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .form-section h3 { font-size: 15px; color: #1a73e8; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
 .form-row { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; }
 .form-row label { font-size: 13px; color: #666; min-width: 50px; }
-.form-row select { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fafafa; }
-.form-row select:focus { border-color: #1a73e8; outline: none; background: #fff; }
+.form-row select, .form-row input { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fafafa; }
+.form-row select:focus, .form-row input:focus { border-color: #1a73e8; outline: none; background: #fff; }
 
 .summary { background: linear-gradient(135deg, #1a73e8, #0d47a1); color: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
 .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -76,12 +84,26 @@ canvas { width: 100% !important; height: 300px !important; }
 .empty-state p { font-size: 14px; }
 
 .hidden { display: none; }
+
+/* 分析面板 */
+.analysis-panel { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.analysis-panel h3 { font-size: 15px; color: #1a73e8; margin-bottom: 12px; }
+.analysis-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.analysis-form input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+.analysis-form button { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; }
+
+/* 排行榜 */
+.leaderboard-section { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.leaderboard-section h3 { font-size: 15px; color: #1a73e8; margin-bottom: 12px; }
+.leaderboard-item { background: #fafafa; border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 4px solid #4caf50; }
+.leaderboard-item.rate-mid { border-left-color: #ff9800; }
+.leaderboard-item.rate-low { border-left-color: #f44336; }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>📊 产线小时达成录入</h1>
+  <h1>📊 地刷车间 - 产线小时达成录入</h1>
   <div class="date" id="currentDate"></div>
 </div>
 
@@ -96,7 +118,7 @@ canvas { width: 100% !important; height: 300px !important; }
     <h3>选择日期和线体</h3>
     <div class="form-row">
       <label>日期</label>
-      <input type="date" id="recordDate" onchange="onDateChange()" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fafafa">
+      <input type="date" id="recordDate" onchange="onDateChange()">
     </div>
     <div class="form-row">
       <label>线体</label>
@@ -106,123 +128,140 @@ canvas { width: 100% !important; height: 300px !important; }
     </div>
   </div>
 
-  <div class="summary" id="summarySection" style="display:none">
-    <div class="summary-row">
-      <span class="summary-label" id="summaryDateLabel">当日累计达成</span>
-      <span class="summary-value" id="totalAchieved">0</span>
+  <div id="timeSection" style="display:none">
+    <div class="form-section">
+      <h3>小时产出录入</h3>
+      <div class="time-grid" id="timeGrid"></div>
     </div>
+  </div>
+
+  <div id="summarySection" class="summary" style="display:none">
     <div class="summary-row">
-      <span class="summary-label">当日累计目标</span>
+      <span class="summary-label">目标产量</span>
       <span class="summary-value" id="totalTarget">0</span>
     </div>
     <div class="summary-row">
-      <span class="summary-label">当日达成率</span>
+      <span class="summary-label">实际达成</span>
+      <span class="summary-value" id="totalAchieved">0</span>
+    </div>
+    <div class="summary-row">
+      <span class="summary-label">达成率</span>
       <span class="summary-rate" id="totalRate">0%</span>
     </div>
   </div>
 
-  <div class="form-section" id="timeSection" style="display:none">
-    <h3>小时达成录入（每小时选择型号和达成数）</h3>
-    <div class="time-grid" id="timeGrid"></div>
-  </div>
-
   <div id="submitSection" style="display:none">
     <button class="btn btn-primary" onclick="saveData()">💾 保存数据</button>
-    <button class="btn btn-success" onclick="switchTab('board')">📊 查看看板</button>
   </div>
 </div>
 
 <!-- 看板页 -->
 <div class="container hidden" id="boardPage">
-  <div class="form-section">
-    <h3>选择日期查看看板</h3>
-    <div class="form-row">
+  <div class="board-header">
+    <div class="board-title">📊 实时产能看板</div>
+    <div class="form-row" style="margin-bottom:0">
       <label>日期</label>
-      <input type="date" id="boardDate" onchange="renderBoard()" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fafafa">
+      <input type="date" id="boardDate" onchange="renderBoard()">
     </div>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn btn-primary" onclick="renderBoard()" style="flex:1">🔄 刷新看板</button>
-      <button class="btn btn-primary" onclick="generateBoardImage()" style="flex:1;background:#9c27b0">📸 看板长图</button>
-    </div>
-    <div style="margin-top:8px">
-      <button class="btn btn-success" onclick="showAnalysisPanel()" style="width:100%;background:#ff9800">📊 产能分析</button>
-    </div>
-    
-    <!-- 产能分析面板 -->
-    <div id="analysisPanel" style="display:none;margin-top:12px;padding:16px;background:#f5f5f5;border-radius:12px">
-      <h4 style="font-size:14px;color:#333;margin-bottom:12px">选择日期范围</h4>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <div style="flex:1">
-          <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">开始日期</label>
-          <input type="date" id="analysisStartDate" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px">
-        </div>
-        <div style="flex:1">
-          <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">结束日期</label>
-          <input type="date" id="analysisEndDate" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px">
-        </div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" onclick="generateReportImage()" style="flex:1;background:#1a73e8">📊 产能报表</button>
-        <button class="btn btn-primary" onclick="generateReasonSummary()" style="flex:1;background:#d32f2f">📋 异常汇总</button>
-      </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1;padding:10px" onclick="renderBoard()">🔄 刷新数据</button>
+      <button class="btn btn-success" style="flex:1;padding:10px" onclick="exportLeaderboard()">📸 导出排行榜</button>
     </div>
   </div>
 
   <div id="boardContent">
-    <div class="empty-state">
-      <div class="icon">📊</div>
-      <p>请选择日期查看看板</p>
+    <div class="chart-container">
+      <h3>📈 各线体小时达成趋势</h3>
+      <canvas id="trendChart"></canvas>
+    </div>
+
+    <div class="issue-list" id="issueList">
+      <h3>⚠️ 异常记录</h3>
+      <div id="issueContent"></div>
     </div>
   </div>
 
-  <!-- 排行榜 -->
-  <div id="leaderboardSection" style="display:none">
-    <div class="chart-container" style="margin-top:20px">
-      <h3 style="font-size:16px;color:#1a73e8;margin-bottom:16px;text-align:center">🏆 线体达成率排行榜</h3>
-      <div id="leaderboardContent"></div>
-      <div style="text-align:center;margin-top:16px">
-        <button class="btn btn-success" onclick="exportLeaderboard()" style="background:#ff9800">📸 导出排行榜图片</button>
-      </div>
-    </div>
+  <div class="leaderboard-section" id="leaderboardSection" style="display:none">
+    <h3>🏆 线体达成率排行榜</h3>
+    <div id="leaderboardContent"></div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL = 'https://jtcoqlpxdubcmdpawyiu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_g9LTQJUkOYi2F0AU8wmPbw_Gb-kxdI_';
+// ========== 配置区域 - 根据需求修改 ==========
+const CONFIG = {
+  // 车间名称
+  workshopName: '地刷车间',
+  
+  // Supabase 配置
+  supabaseUrl: 'https://jtcoqlpxdubcmdpawyiu.supabase.co',
+  supabaseKey: 'sb_publishable_g9LTQJUkOYi2F0AU8wmPbw_Gb-kxdI_',
+  
+  // 时间段配置（24小时制）
+  timeSlotsStartHour: 8,  // 开始时间（如 8 表示 8:00）
+  timeSlotsEndHour: 19,   // 结束时间（如 19 表示 19:00，最后一个时段是 18:00-19:00）
+  
+  // 默认休息时长（分钟）
+  defaultRestMinutes: 10,
+  
+  // 异常原因选项
+  reasonOptions: [
+    '点胶机异常',
+    '气密测试异常',
+    '测试台异常',
+    '螺丝机异常',
+    'UV炉异常',
+    '镭雕机异常',
+    '线体异常',
+    '来料不良',
+    '批量划伤',
+    '物料配送脱节',
+    '物料混料',
+    '换型损失',
+    '爬坡损失',
+    '内部损失',
+    '新员工熟练度不足',
+    '人员调动',
+    '品质停线',
+    '不良率高',
+    '流水线异常',
+    '其他'
+  ]
+};
+// ==========================================
 
 let db = null;
 let lineModels = {}; // { line_id: [{ model_name, target_value }] }
 let lines = []; // [{ id, name }]
+let TIME_SLOTS = [];
+let chartInstance = null;
+let isSaving = false;
 
+// 初始化时间段
+for (let h = CONFIG.timeSlotsStartHour; h < CONFIG.timeSlotsEndHour; h++) {
+  TIME_SLOTS.push(`${h}:00-${h+1}:00`);
+}
+
+// 初始化 Supabase
 try {
   if (window.supabase && window.supabase.createClient) {
-    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    db = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
     console.log('Supabase initialized');
   }
 } catch(e) {
   console.error('Supabase init error:', e);
 }
 
-const TIME_SLOTS = [];
-for (let h = 8; h < 23; h++) {
-  TIME_SLOTS.push(`${h}:00-${h+1}:00`);
-}
-
-let chartInstance = null;
-
 // 初始化
 async function init() {
   document.getElementById('currentDate').textContent = new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
 
-  // 设置日期选择器：最早7天前，最晚今天
   const today = new Date();
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(today.getDate() - 7);
 
-  // 使用本地时间格式化，避免时区问题
   const formatDate = (d) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -233,79 +272,105 @@ async function init() {
   const todayStr = formatDate(today);
   const sevenDaysAgoStr = formatDate(sevenDaysAgo);
 
-  const dateInput = document.getElementById('recordDate');
-  dateInput.max = todayStr;
-  dateInput.min = sevenDaysAgoStr;
-  dateInput.value = todayStr;
-
-  const boardDateInput = document.getElementById('boardDate');
-  const ninetyDaysAgo = new Date();
-  ninetyDaysAgo.setDate(today.getDate() - 90);
-  boardDateInput.max = todayStr;
-  boardDateInput.min = formatDate(ninetyDaysAgo);
-  boardDateInput.value = todayStr;
+  document.getElementById('recordDate').value = todayStr;
+  document.getElementById('recordDate').min = sevenDaysAgoStr;
+  document.getElementById('recordDate').max = todayStr;
+  document.getElementById('boardDate').value = todayStr;
 
   await loadLines();
-  await loadLineModels();
-  populateLineSelects();
 }
 
-// 日期变化
-function onDateChange() {
-  const lineId = document.getElementById('lineSelect').value;
-  if (lineId) {
-    buildTimeGrid();
+// 加载线体列表
+async function loadLines() {
+  if (!db) return;
+  
+  try {
+    const { data, error } = await db.from('production_lines').select('*').order('id');
+    if (error) throw error;
+    
+    lines = data || [];
+    const select = document.getElementById('lineSelect');
+    select.innerHTML = '<option value="">请选择线体</option>';
+    
+    for (const line of lines) {
+      const option = document.createElement('option');
+      option.value = line.id;
+      option.textContent = line.name;
+      select.appendChild(option);
+      
+      // 加载该线体的型号
+      await loadLineModels(line.id);
+    }
+  } catch(e) {
+    console.error('loadLines error:', e);
   }
 }
 
-// 获取选择的日期
+// 加载线体型号
+async function loadLineModels(lineId) {
+  if (!db) return;
+  
+  try {
+    const { data, error } = await db.from('production_line_models')
+      .select('*')
+      .eq('line_id', lineId)
+      .eq('is_active', true);
+    if (error) throw error;
+    
+    lineModels[lineId] = (data || []).map(m => ({
+      model_name: m.model_name,
+      target_value: m.target_uph
+    }));
+  } catch(e) {
+    console.error('loadLineModels error:', e);
+    lineModels[lineId] = [];
+  }
+}
+
+// 获取已保存数据
+async function getSavedData(lineId) {
+  if (!db) return null;
+  
+  const dateStr = getSelectedDate();
+  const lineName = getLineName(lineId);
+  
+  try {
+    const { data, error } = await db.from('production_records')
+      .select('*')
+      .eq('line_name', lineName)
+      .eq('record_date', dateStr)
+      .order('hour_slot');
+    if (error) throw error;
+    
+    const result = {};
+    (data || []).forEach(record => {
+      const slotIndex = TIME_SLOTS.indexOf(record.hour_slot);
+      if (slotIndex >= 0) {
+        result[slotIndex] = {
+          model: record.model_name,
+          achieved: record.achieved_value,
+          reason: record.reason || '',
+          rest_minutes: record.rest_minutes || 0
+        };
+      }
+    });
+    return result;
+  } catch(e) {
+    console.error('getSavedData error:', e);
+    return null;
+  }
+}
+
 function getSelectedDate() {
   return document.getElementById('recordDate').value;
 }
 
-// 加载线体
-async function loadLines() {
-  if (!db) return;
-  const { data } = await db.from('production_lines').select('*').eq('is_active', true).order('sort_order');
-  if (data) lines = data;
-}
-
-// 加载线体-型号关联
-async function loadLineModels() {
-  if (!db) return;
-  const { data } = await db.from('production_line_models').select('*').eq('is_active', true).order('sort_order');
-  if (data) {
-    lineModels = {};
-    data.forEach(m => {
-      if (!lineModels[m.line_id]) lineModels[m.line_id] = [];
-      lineModels[m.line_id].push({ model_name: m.model_name, target_value: m.target_value });
-    });
-  }
-}
-
-// 填充线体下拉框
-function populateLineSelects() {
-  const selects = ['lineSelect'];
-  selects.forEach(id => {
-    const sel = document.getElementById(id);
-    const val = sel.value;
-    sel.innerHTML = '<option value="">请选择线体</option>';
-    lines.forEach(l => {
-      sel.innerHTML += `<option value="${l.id}" ${val == l.id ? 'selected' : ''}>${l.name}</option>`;
-    });
-    sel.value = val;
-  });
-}
-
-// 获取线体名称
 function getLineName(lineId) {
   const l = lines.find(x => x.id == lineId);
   return l ? l.name : '';
 }
 
-// 获取线体的型号列表
 function getModelsForLine(lineId) {
-  // lineId 可能是字符串UUID或数字，统一用字符串匹配
   return lineModels[lineId] || lineModels[String(lineId)] || [];
 }
 
@@ -333,11 +398,6 @@ function onLineChange() {
       document.getElementById('timeSection').style.display = 'block';
       document.getElementById('summarySection').style.display = 'flex';
       document.getElementById('submitSection').style.display = 'block';
-    }).catch(e => {
-      console.error('onLineChange error:', e);
-      document.getElementById('timeSection').style.display = 'block';
-      document.getElementById('summarySection').style.display = 'flex';
-      document.getElementById('submitSection').style.display = 'block';
     });
   } else {
     document.getElementById('timeSection').style.display = 'none';
@@ -358,7 +418,6 @@ async function buildTimeGrid() {
     savedData = await getSavedData(lineId);
   } catch(e) {
     console.error('getSavedData error:', e);
-    savedData = null;
   }
 
   const models = getModelsForLine(lineId);
@@ -404,11 +463,40 @@ async function buildTimeGrid() {
         </div>
         <div style="flex:2">
           <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">未达标原因</label>
-          <input class="time-reason" id="reason_${i}" value="${savedReason}" placeholder="未达标原因（未达标必填）" oninput="onReasonChange(${i})">
+          <div style="display:flex;gap:4px">
+            <select class="time-reason-select" id="reason_select_${i}" onchange="onReasonSelectChange(${i})" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px">
+              <option value="">选择原因</option>
+              ${CONFIG.reasonOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+            </select>
+            <input class="time-reason-extra" id="reason_extra_${i}" value="" placeholder="补充说明（可选）" oninput="onReasonChange(${i})" style="flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px">
+          </div>
+          <input type="hidden" id="reason_${i}" value="${savedReason}">
         </div>
       </div>
     `;
     grid.appendChild(row);
+
+    // 恢复已保存的原因（拆分选项和补充内容）
+    if (savedReason) {
+      const reasonSelect = document.getElementById(`reason_select_${i}`);
+      const reasonExtra = document.getElementById(`reason_extra_${i}`);
+      const hidden = document.getElementById(`reason_${i}`);
+      
+      // 检查是否匹配选项列表
+      const matchedOption = CONFIG.reasonOptions.find(opt => savedReason.startsWith(opt));
+      if (matchedOption) {
+        reasonSelect.value = matchedOption;
+        // 剩余部分作为补充
+        const extra = savedReason.substring(matchedOption.length).replace(/^[，,]/, '').trim();
+        if (extra) {
+          reasonExtra.value = extra;
+        }
+      } else {
+        // 不匹配任何选项，作为补充内容
+        reasonExtra.value = savedReason;
+      }
+      hidden.value = savedReason;
+    }
 
     if (savedModel && savedAchieved !== '') {
       updateRowStatus(i);
@@ -418,117 +506,145 @@ async function buildTimeGrid() {
   updateSummary();
 }
 
-// 型号变化
+function onDateChange() {
+  const lineId = document.getElementById('lineSelect').value;
+  if (lineId) {
+    buildTimeGrid();
+  }
+}
+
 function onModelChange(index) {
   updateRowStatus(index);
   updateSummary();
 }
 
-// 达成数变化
 function onAchievedChange(index) {
   updateRowStatus(index);
   updateSummary();
 }
 
-// 休息分钟数变化
 function onRestChange(index) {
   updateRowStatus(index);
   updateSummary();
 }
 
-// 获取型号目标值
+function onReasonChange(index) {
+  // 组合选项和补充内容
+  const select = document.getElementById(`reason_select_${index}`);
+  const extra = document.getElementById(`reason_extra_${index}`);
+  const hidden = document.getElementById(`reason_${index}`);
+  
+  let reason = select.value || '';
+  if (extra.value.trim()) {
+    reason = reason ? `${reason}，${extra.value.trim()}` : extra.value.trim();
+  }
+  hidden.value = reason;
+  
+  updateRowStatus(index);
+}
+
+function onReasonSelectChange(index) {
+  onReasonChange(index);
+}
+
 function getModelTarget(lineId, modelName) {
   const models = getModelsForLine(lineId);
   const m = models.find(x => x.model_name === modelName);
   return m ? m.target_value : 0;
 }
 
-// 根据休息分钟数计算调整后的目标
 function getAdjustedTarget(baseTarget, restMinutes) {
   if (!baseTarget || baseTarget <= 0) return 0;
   const rest = parseInt(restMinutes) || 0;
-  if (rest <= 0) return baseTarget;
-  if (rest >= 60) return 0;
-  // 按比例计算：目标 × (60 - 休息分钟) / 60
   return Math.round(baseTarget * (60 - rest) / 60);
 }
 
-// 更新行状态
 function updateRowStatus(index) {
   const lineId = document.getElementById('lineSelect').value;
   const model = document.getElementById(`model_${index}`).value;
   const achieved = parseInt(document.getElementById(`achieved_${index}`).value) || 0;
-  const baseTarget = getModelTarget(lineId, model);
   const restMinutes = parseInt(document.getElementById(`rest_${index}`).value) || 0;
+  const reason = document.getElementById(`reason_${index}`).value.trim();
+  
+  const baseTarget = getModelTarget(lineId, model);
   const target = getAdjustedTarget(baseTarget, restMinutes);
-  const targetEl = document.getElementById(`target_${index}`);
+  
   const statusEl = document.getElementById(`status_${index}`);
-  const reasonEl = document.getElementById(`reason_${index}`);
-
-  if (model && baseTarget > 0) {
-    // 显示调整后的目标
-    if (restMinutes > 0) {
-      targetEl.textContent = `目标: ${target} (休息${restMinutes}分钟)`;
-    } else {
-      targetEl.textContent = `目标: ${target}`;
-    }
-
+  const targetEl = document.getElementById(`target_${index}`);
+  const reasonSelect = document.getElementById(`reason_select_${index}`);
+  const reasonExtra = document.getElementById(`reason_extra_${index}`);
+  
+  if (model && target > 0) {
+    targetEl.textContent = `目标: ${target}`;
+    
     if (achieved >= target) {
       statusEl.textContent = '✓ 达标';
       statusEl.className = 'time-status status-ok';
-      reasonEl.classList.remove('required');
+      reasonSelect.classList.remove('required');
+      reasonExtra.classList.remove('required');
     } else if (achieved > 0) {
-      statusEl.textContent = `差 ${target - achieved}`;
+      statusEl.textContent = '✗ 未达标';
       statusEl.className = 'time-status status-fail';
-      reasonEl.classList.add('required');
+      if (!reason) {
+        reasonSelect.classList.add('required');
+      } else {
+        reasonSelect.classList.remove('required');
+        reasonExtra.classList.remove('required');
+      }
     } else {
       statusEl.textContent = '-';
       statusEl.className = 'time-status';
+      reasonSelect.classList.remove('required');
+      reasonExtra.classList.remove('required');
     }
   } else {
     targetEl.textContent = '';
     statusEl.textContent = '-';
     statusEl.className = 'time-status';
+    reasonSelect.classList.remove('required');
+    reasonExtra.classList.remove('required');
   }
 }
 
-function onReasonChange(index) {
-  const reasonEl = document.getElementById(`reason_${index}`);
-  if (reasonEl.value.trim()) {
-    reasonEl.classList.remove('required');
-  }
-}
-
-// 更新汇总
 function updateSummary() {
   const lineId = document.getElementById('lineSelect').value;
-  let totalAchieved = 0;
   let totalTarget = 0;
-
+  let totalAchieved = 0;
+  
   TIME_SLOTS.forEach((slot, i) => {
     const model = document.getElementById(`model_${i}`).value;
     const achieved = parseInt(document.getElementById(`achieved_${i}`).value) || 0;
-    const baseTarget = getModelTarget(lineId, model);
     const restMinutes = parseInt(document.getElementById(`rest_${i}`).value) || 0;
+    
+    const baseTarget = getModelTarget(lineId, model);
     const target = getAdjustedTarget(baseTarget, restMinutes);
-
-    totalAchieved += achieved;
+    
     totalTarget += target;
+    totalAchieved += achieved;
   });
-
-  const rate = totalTarget > 0 ? ((totalAchieved / totalTarget) * 100).toFixed(1) : 0;
-
-  document.getElementById('totalAchieved').textContent = totalAchieved;
+  
   document.getElementById('totalTarget').textContent = totalTarget;
-  document.getElementById('totalRate').textContent = rate + '%';
+  document.getElementById('totalAchieved').textContent = totalAchieved;
+  
+  const rate = totalTarget > 0 ? (totalAchieved / totalTarget * 100) : 0;
+  const rateEl = document.getElementById('totalRate');
+  rateEl.textContent = rate.toFixed(1) + '%';
+  rateEl.style.color = rate >= 100 ? '#4caf50' : rate >= 90 ? '#ff9800' : '#f44336';
 }
 
-// 保存数据到 Supabase
+// 保存数据
 async function saveData() {
   if (!db) { alert('❌ 数据库未连接，请刷新页面重试'); return; }
+  if (isSaving) { alert('正在保存中，请稍候...'); return; }
+  
+  isSaving = true;
+  const saveBtn = document.querySelector('.btn-primary');
+  const originalText = saveBtn.textContent;
+  saveBtn.textContent = '保存中...';
+  saveBtn.disabled = true;
 
   const lineId = document.getElementById('lineSelect').value;
-  if (!lineId) { alert('请选择线体'); return; }
+  if (!lineId) { alert('请选择线体'); isSaving = false; saveBtn.textContent = originalText; saveBtn.disabled = false; return; }
 
   const recordDate = getSelectedDate();
   const lineName = getLineName(lineId);
@@ -539,13 +655,15 @@ async function saveData() {
     const model = document.getElementById(`model_${i}`).value;
     const achieved = parseInt(document.getElementById(`achieved_${i}`).value) || 0;
     const reason = document.getElementById(`reason_${i}`).value.trim();
+    
     const baseTarget = getModelTarget(lineId, model);
     const restMinutes = parseInt(document.getElementById(`rest_${i}`).value) || 0;
     const target = getAdjustedTarget(baseTarget, restMinutes);
 
     if (model && target > 0 && achieved < target && achieved > 0 && !reason) {
       hasMissingReason = true;
-      document.getElementById(`reason_${i}`).classList.add('required');
+      const reasonSelect = document.getElementById(`reason_select_${i}`);
+      if (reasonSelect) reasonSelect.classList.add('required');
     }
 
     if (model) {
@@ -562,912 +680,299 @@ async function saveData() {
     }
   });
 
-  if (hasMissingReason) { alert('未达标的时段必须填写异常原因！'); return; }
-  if (slots.length === 0) { alert('请至少选择一个型号！'); return; }
-
-  // 使用 upsert 覆盖已有数据（需要数据库有唯一约束）
-  const { error } = await db.from('production_records').upsert(slots, {
-    onConflict: 'line_name,record_date,hour_slot',
-    ignoreDuplicates: false
-  });
-
-  if (error) {
-    console.error('保存失败:', error);
-    // 如果 upsert 失败（可能是唯一约束不存在），回退到 delete+insert
-    if (error.message && error.message.includes('constraint')) {
-      console.log('upsert 失败，回退到 delete+insert 模式');
-      const { error: delErr } = await db.from('production_records')
-        .delete()
-        .eq('line_name', lineName)
-        .eq('record_date', recordDate);
-      if (delErr) { alert('❌ 删除旧数据失败: ' + delErr.message); return; }
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const { error: insErr } = await db.from('production_records').insert(slots);
-      if (insErr) { alert('❌ 保存失败: ' + insErr.message); return; }
-    } else {
-      alert('❌ 保存失败: ' + error.message);
-      return;
-    }
+  if (hasMissingReason) { 
+    alert('⚠️ 未达标的时段必须填写异常原因！'); 
+    isSaving = false; 
+    saveBtn.textContent = originalText; 
+    saveBtn.disabled = false; 
+    return; 
+  }
+  
+  if (slots.length === 0) { 
+    alert('请至少选择一个型号！'); 
+    isSaving = false; 
+    saveBtn.textContent = originalText; 
+    saveBtn.disabled = false; 
+    return; 
   }
 
+  // 先删除旧数据，再插入新数据（避免重复）
+  const { error: delErr } = await db.from('production_records')
+    .delete()
+    .eq('line_name', lineName)
+    .eq('record_date', recordDate);
+  
+  if (delErr) { 
+    console.error('删除旧数据失败:', delErr);
+    alert('❌ 删除旧数据失败: ' + delErr.message); 
+    isSaving = false; 
+    saveBtn.textContent = originalText; 
+    saveBtn.disabled = false;
+    return; 
+  }
+  
+  // 等待删除完成
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  // 插入新数据
+  const { error: insErr } = await db.from('production_records').insert(slots);
+  
+  if (insErr) { 
+    console.error('保存失败:', insErr);
+    alert('❌ 保存失败: ' + insErr.message); 
+    isSaving = false; 
+    saveBtn.textContent = originalText; 
+    saveBtn.disabled = false;
+    return; 
+  }
+
+  isSaving = false;
+  saveBtn.textContent = originalText;
+  saveBtn.disabled = false;
   alert('✅ ' + recordDate + ' 数据保存成功！');
 }
 
-// 从 Supabase 获取已保存数据
-async function getSavedData(lineId, date) {
-  if (!db) return null;
-
-  const lineName = getLineName(lineId);
-  const dateKey = date || getSelectedDate();
-
-  console.log('getSavedData: lineId=', lineId, 'lineName=', lineName, 'dateKey=', dateKey);
-
-  try {
-    const { data, error } = await db
-      .from('production_records')
-      .select('*')
-      .eq('line_name', lineName)
-      .eq('record_date', dateKey)
-      .order('hour_slot');
-
-    console.log('Query result:', { data, error });
-
-    if (error) { console.error('查询失败:', error); return null; }
-    if (!data || data.length === 0) return null;
-
-    const result = data.map(row => ({
-      hour_slot: row.hour_slot,
-      model: row.model_name,
-      achieved: row.achieved_value,
-      target: row.target_value,
-      reason: row.reason || '',
-      rest_minutes: row.rest_minutes || 0
-    }));
-
-    // 按时间顺序排序（提取起始小时）
-    result.sort((a, b) => {
-      const getStartHour = (slot) => {
-        // 处理 "8:00-9:00" 或 "8~9" 格式
-        const match = slot.match(/^(\d+)/);
-        return match ? parseInt(match[1]) : 0;
-      };
-      return getStartHour(a.hour_slot) - getStartHour(b.hour_slot);
-    });
-
-    return result;
-  } catch(e) {
-    console.error('getSavedData exception:', e);
-    return null;
-  }
-}
-
-// 渲染看板 - 每个线体独立图表
-let boardCharts = [];
-
+// 看板功能
 async function renderBoard() {
-  const boardDate = document.getElementById('boardDate').value;
-  const content = document.getElementById('boardContent');
-
-  console.log('renderBoard called, boardDate:', boardDate);
-  console.log('lines:', lines);
-
-  // 清除旧图表
-  boardCharts.forEach(c => c.destroy());
-  boardCharts = [];
-
-  // 获取所有线体的数据
-  const allLineData = [];
-
-  for (const line of lines) {
-    console.log('Checking line:', line.name, 'id:', line.id);
-    const data = await getSavedData(line.id, boardDate);
-    console.log('Data for', line.name, ':', data);
-    if (data && data.length > 0) {
-      let totalAchieved = 0;
-      let totalTarget = 0;
-      const hourlyData = [];
-
-      data.forEach((record) => {
-        const target = record.target || 0;
-        totalAchieved += record.achieved;
-        totalTarget += target;
-        // 使用数据库中的 hour_slot 字段，而不是数组索引
-        const hourSlot = record.hour_slot || '';
-        hourlyData.push({
-          hour: hourSlot,
-          model: record.model,
-          achieved: record.achieved,
-          target: target,
-          reason: record.reason,
-          isMet: record.achieved >= target
-        });
-      });
-
-      const rate = totalTarget > 0 ? ((totalAchieved / totalTarget) * 100).toFixed(1) : 0;
-
-      allLineData.push({
-        lineId: line.id,
-        lineName: line.name,
-        totalAchieved,
-        totalTarget,
-        rate: parseFloat(rate),
-        hourlyData
-      });
-    }
-  }
-
-  if (allLineData.length === 0) {
-    content.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>${boardDate} 暂无数据</p></div>`;
-    // 即使没有数据也要显示排行榜（所有线体都是0%）
-    renderLeaderboard([], boardDate);
+  const dateStr = document.getElementById('boardDate').value;
+  if (!dateStr) {
+    alert('请选择日期');
     return;
   }
 
-  // 按达成率排名
-  allLineData.sort((a, b) => b.rate - a.rate);
+  if (!db) {
+    document.getElementById('boardContent').innerHTML = '<div class="empty-state"><div class="icon">❌</div><p>数据库未连接</p></div>';
+    return;
+  }
 
-  const colors = ['#1a73e8', '#4caf50', '#ff9800', '#9c27b0', '#f44336', '#00bcd4', '#ff5722', '#607d8b'];
-  const labels = TIME_SLOTS.map(s => s.replace(':00-','~').replace(':00',''));
+  try {
+    const { data, error } = await db.from('production_records')
+      .select('*')
+      .eq('record_date', dateStr);
+    
+    if (error) throw error;
 
-  let html = '';
-
-  allLineData.forEach((lineData, idx) => {
-    const rank = idx + 1;
-    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}`;
-    const rateClass = lineData.rate >= 90 ? 'rate-high' : lineData.rate >= 70 ? 'rate-mid' : 'rate-low';
-    const color = colors[idx % colors.length];
-
-    html += `
-      <div class="chart-container" style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <h3 style="font-size:15px;color:#333;margin:0">
-            <span style="font-size:20px;margin-right:6px">${medal}</span>${lineData.lineName}
-          </h3>
-          <div style="text-align:right">
-            <div class="${rateClass}" style="font-size:22px;font-weight:700">${lineData.rate}%</div>
-            <div style="font-size:11px;color:#888">达成${lineData.totalAchieved}/目标${lineData.totalTarget}</div>
-          </div>
-        </div>
-        <canvas id="chart_${lineData.lineId}" style="width:100%!important;height:220px!important"></canvas>
-      </div>
-    `;
-
-    // 未达标时段
-    const issues = lineData.hourlyData.filter(h => !h.isMet && h.achieved > 0);
-    if (issues.length > 0) {
-      html += `<div class="issue-list" style="margin-bottom:12px"><h3 style="font-size:13px">⚠️ ${lineData.lineName} 未达标时段</h3>`;
-      issues.forEach(h => {
-        const hourLabel = h.hour.replace(':00-','~').replace(':00','');
-        html += `<div class="issue-item"><span class="issue-time">${hourLabel}</span><span class="issue-reason">${h.model} | 达成${h.achieved}/${h.target}，差${h.target - h.achieved}。原因：${h.reason || '未填写'}</span></div>`;
-      });
-      html += '</div>';
+    if (!data || data.length === 0) {
+      document.getElementById('boardContent').innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>暂无数据</p></div>';
+      document.getElementById('leaderboardSection').style.display = 'none';
+      return;
     }
-  });
 
-  content.innerHTML = html;
-
-  // 渲染每个线体的图表
-  allLineData.forEach((lineData, idx) => {
-    // 达成=绿色，未达成=红色
-    const bgColors = lineData.hourlyData.map(h => h.isMet ? '#4caf50cc' : '#f44336cc');
-
-    // 使用这个线体自己的时间段作为标签
-    const chartLabels = lineData.hourlyData.map(h => h.hour.replace(':00-','~').replace(':00',''));
-
-    const ctx = document.getElementById(`chart_${lineData.lineId}`).getContext('2d');
-    const chart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: chartLabels,
-        datasets: [
-          {
-            label: '达成',
-            data: lineData.hourlyData.map(h => h.achieved),
-            backgroundColor: bgColors,
-            borderRadius: 4,
-            order: 2
-          },
-          {
-            label: '目标',
-            data: lineData.hourlyData.map(h => h.target),
-            type: 'line',
-            borderColor: '#1a73e8',
-            borderWidth: 2,
-            borderDash: [5, 5],
-            pointRadius: 3,
-            pointBackgroundColor: '#1a73e8',
-            fill: false,
-            order: 1
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top', labels: { font: { size: 11 } } },
-          tooltip: {
-            callbacks: {
-              afterLabel: function(context) {
-                if (context.dataset.type === 'line') return '';
-                const hourIdx = context.dataIndex;
-                const h = lineData.hourlyData[hourIdx];
-                if (!h) return '';
-                let text = `型号: ${h.model}`;
-                if (h.reason) text += `\n原因: ${h.reason}`;
-                return text;
-              }
-            }
-          }
-        },
-        scales: {
-          y: { beginAtZero: true, title: { display: true, text: '数量', font: { size: 11 } } },
-          x: { title: { display: true, text: '时段', font: { size: 11 } } }
-        }
+    // 按线体分组
+    const lineDataMap = {};
+    data.forEach(record => {
+      if (!lineDataMap[record.line_name]) {
+        lineDataMap[record.line_name] = [];
       }
+      lineDataMap[record.line_name].push(record);
     });
-    boardCharts.push(chart);
-  });
 
-  // 渲染排行榜
-  renderLeaderboard(allLineData, boardDate);
+    // 渲染图表
+    renderChart(lineDataMap);
+    
+    // 渲染异常列表
+    renderIssueList(data);
+    
+    // 渲染排行榜
+    const allLineData = Object.entries(lineDataMap).map(([lineName, records]) => {
+      let totalTarget = 0;
+      let totalAchieved = 0;
+      const hourlyData = [];
+      
+      TIME_SLOTS.forEach(slot => {
+        const record = records.find(r => r.hour_slot === slot);
+        if (record) {
+          totalTarget += record.target_value;
+          totalAchieved += record.achieved_value;
+          hourlyData.push({
+            hour: slot,
+            target: record.target_value,
+            achieved: record.achieved_value,
+            rate: record.target_value > 0 ? (record.achieved_value / record.target_value * 100) : 0
+          });
+        }
+      });
+      
+      return {
+        lineName,
+        totalTarget,
+        totalAchieved,
+        rate: totalTarget > 0 ? (totalAchieved / totalTarget * 100) : 0,
+        hourlyData
+      };
+    });
+    
+    renderLeaderboard(allLineData, dateStr);
+
+  } catch(e) {
+    console.error('renderBoard error:', e);
+    document.getElementById('boardContent').innerHTML = '<div class="empty-state"><div class="icon">❌</div><p>加载失败: ' + e.message + '</p></div>';
+  }
 }
 
-// 渲染排行榜
+function renderChart(lineDataMap) {
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
+
+  const datasets = [];
+  const colors = ['#1a73e8', '#4caf50', '#ff9800', '#f44336', '#9c27b0', '#00bcd4'];
+  let colorIndex = 0;
+
+  Object.entries(lineDataMap).forEach(([lineName, records]) => {
+    const targetData = [];
+    const achievedData = [];
+    
+    TIME_SLOTS.forEach(slot => {
+      const record = records.find(r => r.hour_slot === slot);
+      if (record) {
+        targetData.push(record.target_value);
+        achievedData.push(record.achieved_value);
+      } else {
+        targetData.push(0);
+        achievedData.push(0);
+      }
+    });
+
+    const color = colors[colorIndex % colors.length];
+    colorIndex++;
+
+    datasets.push({
+      label: lineName + ' 目标',
+      data: targetData,
+      borderColor: color,
+      borderDash: [5, 5],
+      fill: false,
+      tension: 0.1
+    });
+
+    datasets.push({
+      label: lineName + ' 实际',
+      data: achievedData,
+      borderColor: color,
+      backgroundColor: color + '33',
+      fill: true,
+      tension: 0.1
+    });
+  });
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: TIME_SLOTS.map(s => s.replace(':00-','~').replace(':00','')),
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom' }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderIssueList(records) {
+  const issues = records.filter(r => r.reason && r.reason.trim());
+  const content = document.getElementById('issueContent');
+  
+  if (issues.length === 0) {
+    content.innerHTML = '<div class="no-issue">✅ 暂无异常记录</div>';
+    return;
+  }
+
+  let html = '';
+  issues.sort((a, b) => a.hour_slot.localeCompare(b.hour_slot));
+  
+  issues.forEach(issue => {
+    html += `
+      <div class="issue-item">
+        <span class="issue-time">${issue.hour_slot.replace(':00-','~').replace(':00','')}</span>
+        <span style="font-weight:600">${issue.line_name}</span>
+        <span class="issue-reason">${issue.reason}</span>
+      </div>
+    `;
+  });
+  
+  content.innerHTML = html;
+}
+
 function renderLeaderboard(allLineData, boardDate) {
   const leaderboardSection = document.getElementById('leaderboardSection');
   const leaderboardContent = document.getElementById('leaderboardContent');
 
-  // 构建所有线体的达成率数据
-  const lineRates = [];
-
-  // 有数据的线体
-  allLineData.forEach(lineData => {
-    lineRates.push({
-      lineName: lineData.lineName,
-      totalRate: lineData.rate,
-      totalAchieved: lineData.totalAchieved,
-      totalTarget: lineData.totalTarget,
-      hourlyData: lineData.hourlyData,
-      hasData: true
-    });
-  });
-
-  // 没有数据的线体（达成率为0）
-  const linesWithData = allLineData.map(d => d.lineId);
-  lines.forEach(line => {
-    if (!linesWithData.includes(line.id)) {
-      lineRates.push({
-        lineName: line.name,
-        totalRate: 0,
-        totalAchieved: 0,
-        totalTarget: 0,
-        hourlyData: [],
-        hasData: false
-      });
-    }
-  });
-
   // 按达成率排序
-  lineRates.sort((a, b) => b.totalRate - a.totalRate);
+  allLineData.sort((a, b) => b.rate - a.rate);
 
-  // 生成排行榜HTML
   let html = '';
-
-  lineRates.forEach((lineData, idx) => {
+  allLineData.forEach((lineData, idx) => {
     const rank = idx + 1;
     const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}`;
-    const rateClass = lineData.totalRate >= 90 ? 'rate-high' : lineData.totalRate >= 70 ? 'rate-mid' : 'rate-low';
+    const rateClass = lineData.rate >= 100 ? 'rate-high' : lineData.rate >= 90 ? 'rate-mid' : 'rate-low';
+    const itemClass = lineData.rate >= 100 ? '' : lineData.rate >= 90 ? 'rate-mid' : 'rate-low';
 
     html += `
-      <div style="background:#fafafa;border-radius:8px;padding:12px;margin-bottom:10px;border-left:4px solid ${lineData.totalRate >= 90 ? '#4caf50' : lineData.totalRate >= 70 ? '#ff9800' : '#f44336'}">
+      <div class="leaderboard-item ${itemClass}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">${medal}</span>
             <span style="font-size:14px;font-weight:600">${lineData.lineName}</span>
           </div>
           <div style="text-align:right">
-            <div class="${rateClass}" style="font-size:18px;font-weight:700">${lineData.totalRate.toFixed(1)}%</div>
-            ${lineData.hasData ? `<div style="font-size:11px;color:#888">达成${lineData.totalAchieved}/目标${lineData.totalTarget}</div>` : '<div style="font-size:11px;color:#999">未录入</div>'}
+            <div class="${rateClass}" style="font-size:18px;font-weight:700">${lineData.rate.toFixed(1)}%</div>
+            <div style="font-size:11px;color:#888">达成${lineData.totalAchieved}/目标${lineData.totalTarget}</div>
           </div>
         </div>
+      </div>
     `;
-
-    // 如果有数据，显示每个时间段的达成率
-    if (lineData.hasData && lineData.hourlyData.length > 0) {
-      html += `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ddd">`;
-      html += `<div style="font-size:12px;color:#666;margin-bottom:6px">各时段达成率：</div>`;
-      html += `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">`;
-
-      lineData.hourlyData.forEach(h => {
-        const hourLabel = h.hour.replace(':00-', '~').replace(':00', '');
-        const hourRate = h.target > 0 ? ((h.achieved / h.target) * 100).toFixed(1) : 0;
-        const hourRateClass = hourRate >= 100 ? 'rate-high' : hourRate >= 80 ? 'rate-mid' : 'rate-low';
-        const hourIcon = hourRate >= 100 ? '✓' : hourRate >= 80 ? '⚠' : '✗';
-
-        html += `
-          <div style="background:#fff;padding:6px 8px;border-radius:4px;font-size:11px;display:flex;justify-content:space-between;align-items:center">
-            <span style="color:#666">${hourLabel}</span>
-            <span class="${hourRateClass}" style="font-weight:600">${hourRate}% ${hourIcon}</span>
-          </div>
-        `;
-      });
-
-      html += `</div></div>`;
-    }
-
-    html += `</div>`;
   });
 
   leaderboardContent.innerHTML = html;
   leaderboardSection.style.display = 'block';
 }
 
-// 报表弹窗功能
-// 显示产能分析面板
-function showAnalysisPanel() {
-  const panel = document.getElementById('analysisPanel');
-  if (panel.style.display === 'none') {
-    panel.style.display = 'block';
-    // 设置默认日期为今天
-    const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('analysisStartDate').value = today;
-    document.getElementById('analysisEndDate').value = today;
-  } else {
-    panel.style.display = 'none';
-  }
-}
-
-// Replacement functions for generateReportImage and generateReasonSummary
-// These now work entirely client-side with Supabase
-
-// 生成产能报表 - 纯前端版本
-async function generateReportImage() {
-  const startDate = document.getElementById('analysisStartDate').value;
-  const endDate = document.getElementById('analysisEndDate').value;
-  
-  if (!startDate || !endDate) {
-    alert('请先选择开始和结束日期');
-    return;
-  }
-  
-  try {
-    // 从 Supabase 获取数据
-    const url = `${SUPABASE_URL}/rest/v1/production_records?record_date=gte.${startDate}&record_date=lte.${endDate}&select=*`;
-    const response = await fetch(url, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API 错误: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (!data || data.length === 0) {
-      alert('该日期范围没有数据');
-      return;
-    }
-    
-    // 获取线体信息
-    const linesResp = await fetch(`${SUPABASE_URL}/rest/v1/production_lines?select=*&is_active=eq.true&order=sort_order`, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      }
-    });
-    const lines = await linesResp.json();
-    
-    // 按线体+日期汇总
-    const lineDaily = {};
-    const lineTotal = {};
-    
-    data.forEach(record => {
-      const lineName = record.line_name || '';
-      const recordDate = record.record_date || '';
-      const achieved = record.achieved_value || 0;
-      const target = record.target_value || 0;
-      
-      const key = `${lineName}|||${recordDate}`;
-      if (!lineDaily[key]) lineDaily[key] = { achieved: 0, target: 0 };
-      lineDaily[key].achieved += achieved;
-      lineDaily[key].target += target;
-      
-      if (!lineTotal[lineName]) lineTotal[lineName] = { achieved: 0, target: 0 };
-      lineTotal[lineName].achieved += achieved;
-      lineTotal[lineName].target += target;
-    });
-    
-    // 排序
-    const dates = [...new Set(data.map(r => r.record_date))].sort();
-    const results = [];
-    
-    for (const lineName in lineTotal) {
-      const stats = lineTotal[lineName];
-      const rate = stats.target > 0 ? (stats.achieved / stats.target * 100) : 0;
-      const diff = stats.achieved - stats.target;
-      
-      // 提取班长
-      let leader = '';
-      const match = lineName.match(/（(.+?)）/);
-      if (match) leader = match[1];
-      
-      // 每日数据
-      const dailyData = [];
-      dates.forEach(d => {
-        const key = `${lineName}|||${d}`;
-        if (lineDaily[key] && lineDaily[key].target > 0) {
-          const da = lineDaily[key].achieved;
-          const dt = lineDaily[key].target;
-          const dr = dt > 0 ? (da / dt * 100) : 0;
-          dailyData.push({ date: d, achieved: da, target: dt, rate: dr });
-        }
-      });
-      
-      results.push({
-        lineName,
-        leader,
-        achieved: stats.achieved,
-        target: stats.target,
-        rate,
-        diff,
-        daily: dailyData
-      });
-    }
-    
-    results.sort((a, b) => b.rate - a.rate);
-    
-    // 总计
-    const totalAchieved = results.reduce((s, r) => s + r.achieved, 0);
-    const totalTarget = results.reduce((s, r) => s + r.target, 0);
-    const totalRate = totalTarget > 0 ? (totalAchieved / totalTarget * 100) : 0;
-    
-    // 构建 HTML 报表
-    const reportHtml = buildReportHtml(startDate, endDate, results, totalAchieved, totalTarget, totalRate);
-    
-    // 用 html2canvas 生成图片
-    const tempDiv = document.createElement('div');
-    tempDiv.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;background:#f0f2f5;';
-    tempDiv.innerHTML = reportHtml;
-    document.body.appendChild(tempDiv);
-    
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const resultCanvas = await html2canvas(tempDiv, {
-      scale: 2,
-      backgroundColor: '#f0f2f5',
-      useCORS: true,
-      logging: false
-    });
-    
-    document.body.removeChild(tempDiv);
-    
-    // 下载
-    const link = document.createElement('a');
-    link.download = `产能报表_${startDate}_至_${endDate}.png`;
-    link.href = resultCanvas.toDataURL('image/png');
-    link.click();
-    
-    alert('产能报表已生成！');
-    
-  } catch (error) {
-    console.error('生成报表失败:', error);
-    alert('生成报表失败: ' + error.message);
-  }
-}
-
-// 构建报表 HTML
-function buildReportHtml(startDate, endDate, results, totalAchieved, totalTarget, totalRate) {
-  const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
-  const rateColor = (rate) => rate >= 100 ? '#4caf50' : rate >= 90 ? '#ff9800' : '#f44336';
-  
-  let html = `
-    <div style="padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-      <h2 style="text-align:center;color:#1a73e8;margin-bottom:8px;font-size:24px;">📊 地刷车间产能报表</h2>
-      <p style="text-align:center;color:#666;margin-bottom:16px;font-size:14px;">${startDate} 至 ${endDate}</p>
-      
-      <div style="background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center;">
-        <div style="font-size:13px;opacity:0.85;">★ 总达成率 ★</div>
-        <div style="font-size:36px;font-weight:700;color:${rateColor(totalRate)};">${totalRate.toFixed(1)}%</div>
-        <div style="font-size:13px;opacity:0.85;margin-top:4px;">达成 ${totalAchieved.toLocaleString()} / 目标 ${totalTarget.toLocaleString()}</div>
-      </div>
-  `;
-  
-  results.forEach((r, i) => {
-    const medal = i < 3 ? `<span style="display:inline-block;width:28px;height:28px;border-radius:50%;background:${medalColors[i]};color:#333;text-align:center;line-height:28px;font-weight:700;font-size:14px;">${i+1}</span>` : `<span style="display:inline-block;width:28px;height:28px;border-radius:50%;background:#555;color:#fff;text-align:center;line-height:28px;font-weight:700;font-size:14px;">${i+1}</span>`;
-    
-    html += `
-      <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border-left:4px solid ${medalColors[i] || '#555'};">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            ${medal}
-            <span style="font-size:16px;font-weight:600;color:#333;">${r.lineName}</span>
-          </div>
-          <span style="font-size:20px;font-weight:700;color:${rateColor(r.rate)};">${r.rate.toFixed(1)}%</span>
-        </div>
-        <div style="font-size:13px;color:#666;margin-bottom:8px;">
-          达成 ${r.achieved.toLocaleString()} / 目标 ${r.target.toLocaleString()} | 
-          ${r.diff >= 0 ? `<span style="color:#4caf50;">超产 ${r.diff.toLocaleString()}</span>` : `<span style="color:#f44336;">落产 ${Math.abs(r.diff).toLocaleString()}</span>`}
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-    `;
-    
-    r.daily.forEach(d => {
-      const dayNum = d.date.split('-')[2];
-      html += `
-        <div style="background:#f5f5f5;border-radius:6px;padding:4px 8px;font-size:11px;text-align:center;min-width:50px;">
-          <div style="color:#888;">${parseInt(dayNum)}日</div>
-          <div style="color:${rateColor(d.rate)};font-weight:600;">${d.rate.toFixed(0)}%</div>
-        </div>
-      `;
-    });
-    
-    html += `</div></div>`;
-  });
-  
-  html += `<p style="text-align:center;color:#999;font-size:12px;margin-top:16px;">- 产线小时达成录入系统 -</p></div>`;
-  
-  return html;
-}
-
-async function generateReasonSummary() {
-  const startDate = document.getElementById('analysisStartDate').value;
-  const endDate = document.getElementById('analysisEndDate').value;
-  
-  if (!startDate || !endDate) {
-    alert('请先选择开始和结束日期');
-    return;
-  }
-  
-  try {
-    // 从 Supabase 获取数据
-    const url = `${SUPABASE_URL}/rest/v1/production_records?record_date=gte.${startDate}&record_date=lte.${endDate}&select=*`;
-    const response = await fetch(url, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API 错误: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (!data || data.length === 0) {
-      alert('该日期范围没有数据');
-      return;
-    }
-    
-    // 计算每条线的总产量和达成（所有记录，不只是异常记录）
-    const lineProduction = {};
-    data.forEach(record => {
-      const lineName = record.line_name || '';
-      const target = record.target_value || 0;
-      const achieved = record.achieved_value || 0;
-      
-      if (!lineProduction[lineName]) {
-        lineProduction[lineName] = { target: 0, achieved: 0 };
-      }
-      lineProduction[lineName].target += target;
-      lineProduction[lineName].achieved += achieved;
-    });
-    
-    // 筛选有异常原因的记录
-    const reasonRecords = data.filter(d => d.reason && d.reason.trim());
-    
-    if (reasonRecords.length === 0) {
-      alert('该日期范围没有异常记录');
-      return;
-    }
-    
-    // 内外部原因分类关键词
-    const INTERNAL_KW = ['员工', '熟练度', '品质', '不良', '设备', '换型', '测试', '故障', '停线', '切换', '新员工', '复测'];
-    const EXTERNAL_KW = ['物料', '来料', '供应商', '外部', '其他部门', '停电', '环境'];
-    
-    function classifyReason(reason) {
-      for (const kw of EXTERNAL_KW) {
-        if (reason.includes(kw)) return 'external';
-      }
-      for (const kw of INTERNAL_KW) {
-        if (reason.includes(kw)) return 'internal';
-      }
-      return 'other';
-    }
-    
-    // 按线体汇总异常
-    const lineStats = {};
-    
-    reasonRecords.forEach(record => {
-      const lineName = record.line_name || '';
-      const reason = record.reason.trim();
-      const target = record.target_value || 0;
-      const achieved = record.achieved_value || 0;
-      const shortage = target - achieved;
-      
-      if (!lineStats[lineName]) {
-        lineStats[lineName] = {
-          reasons: {},
-          totalShortage: 0
-        };
-      }
-      
-      if (!lineStats[lineName].reasons[reason]) {
-        lineStats[lineName].reasons[reason] = {
-          count: 0,
-          totalShortage: 0,
-          category: classifyReason(reason)
-        };
-      }
-      
-      lineStats[lineName].reasons[reason].count++;
-      lineStats[lineName].reasons[reason].totalShortage += shortage;
-      lineStats[lineName].totalShortage += shortage;
-    });
-    
-    // 计算整体损失
-    let totalTarget = 0, totalAchieved = 0, totalLoss = 0;
-    let totalInternalLoss = 0, totalExternalLoss = 0, totalOtherLoss = 0;
-    
-    Object.values(lineStats).forEach(stats => {
-      totalLoss += stats.totalShortage;
-      Object.values(stats.reasons).forEach(reasonData => {
-        if (reasonData.category === 'internal') totalInternalLoss += reasonData.totalShortage;
-        else if (reasonData.category === 'external') totalExternalLoss += reasonData.totalShortage;
-        else totalOtherLoss += reasonData.totalShortage;
-      });
-    });
-    
-    Object.values(lineProduction).forEach(p => {
-      totalTarget += p.target;
-      totalAchieved += p.achieved;
-    });
-    
-    const overallStats = {
-      totalTarget,
-      totalAchieved,
-      totalLoss,
-      totalRate: totalTarget > 0 ? (totalAchieved / totalTarget * 100) : 0,
-      totalInternalLoss,
-      totalExternalLoss,
-      totalOtherLoss
-    };
-    
-    // 构建 HTML
-    const html = buildReasonSummaryHtml(startDate, endDate, lineStats, lineProduction, overallStats);
-    
-    // 用 html2canvas 生成图片
-    const tempDiv = document.createElement('div');
-    tempDiv.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;background:#f5f5f5;';
-    tempDiv.innerHTML = html;
-    document.body.appendChild(tempDiv);
-    
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const resultCanvas = await html2canvas(tempDiv, {
-      scale: 2,
-      backgroundColor: '#f5f5f5',
-      useCORS: true,
-      logging: false
-    });
-    
-    document.body.removeChild(tempDiv);
-    
-    // 下载
-    const link = document.createElement('a');
-    link.download = `异常汇总_${startDate}_至_${endDate}.png`;
-    link.href = resultCanvas.toDataURL('image/png');
-    link.click();
-    
-    alert('异常汇总已生成！');
-    
-  } catch (error) {
-    console.error('生成异常汇总失败:', error);
-    alert('生成异常汇总失败: ' + error.message);
-  }
-}
-
-// 构建异常汇总 HTML
-function buildReasonSummaryHtml(startDate, endDate, lineStats, lineProduction, overallStats) {
-  const categoryColors = {
-    internal: { bg: '#fff3e0', text: '#e65100', label: '内部' },
-    external: { bg: '#e3f2fd', text: '#1565c0', label: '外部' },
-    other: { bg: '#f5f5f5', text: '#616161', label: '其他' }
-  };
-  
-  const rateColor = (rate) => rate >= 100 ? '#4caf50' : rate >= 90 ? '#ff9800' : '#f44336';
-  
-  let html = `
-    <div style="padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-      <h2 style="text-align:center;color:#d32f2f;margin-bottom:8px;font-size:24px;">📋 异常原因汇总</h2>
-      <p style="text-align:center;color:#666;margin-bottom:16px;font-size:14px;">${startDate} 至 ${endDate}</p>
-      
-      <!-- 整体损失汇总 -->
-      <div style="background:linear-gradient(135deg,#d32f2f,#b71c1c);color:#fff;border-radius:12px;padding:16px;margin-bottom:16px;">
-        <div style="font-size:14px;font-weight:600;margin-bottom:12px;text-align:center;">⚠️ 整体损失情况</div>
-        <div style="display:flex;justify-content:space-around;text-align:center;">
-          <div>
-            <div style="font-size:11px;opacity:0.85;">总损失</div>
-            <div style="font-size:24px;font-weight:700;">${overallStats.totalLoss.toLocaleString()}</div>
-            <div style="font-size:11px;opacity:0.85;">台</div>
-          </div>
-          <div style="border-left:1px solid rgba(255,255,255,0.3);"></div>
-          <div>
-            <div style="font-size:11px;opacity:0.85;">内部损失</div>
-            <div style="font-size:20px;font-weight:700;color:#ffcc80;">${overallStats.totalInternalLoss.toLocaleString()}</div>
-          </div>
-          <div style="border-left:1px solid rgba(255,255,255,0.3);"></div>
-          <div>
-            <div style="font-size:11px;opacity:0.85;">外部损失</div>
-            <div style="font-size:20px;font-weight:700;color:#90caf9;">${overallStats.totalExternalLoss.toLocaleString()}</div>
-          </div>
-        </div>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.2);display:flex;justify-content:space-around;text-align:center;">
-          <div>
-            <div style="font-size:11px;opacity:0.85;">总目标</div>
-            <div style="font-size:16px;font-weight:600;">${overallStats.totalTarget.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style="font-size:11px;opacity:0.85;">总达成</div>
-            <div style="font-size:16px;font-weight:600;">${overallStats.totalAchieved.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style="font-size:11px;opacity:0.85;">达成率</div>
-            <div style="font-size:16px;font-weight:700;color:${rateColor(overallStats.totalRate)};">${overallStats.totalRate.toFixed(1)}%</div>
-          </div>
-        </div>
-      </div>
-  `;
-  
-  // 按总损失排序
-  const sortedLines = Object.entries(lineStats).sort((a, b) => b[1].totalShortage - a[1].totalShortage);
-  
-  sortedLines.forEach(([lineName, stats]) => {
-    // 提取班长
-    let leader = '';
-    const match = lineName.match(/（(.+?)）/);
-    if (match) leader = match[1];
-    const shortName = lineName.replace(/（.+?）/, '');
-    
-    // 获取该线的产量达成数据
-    const production = lineProduction[lineName] || { target: 0, achieved: 0 };
-    const lineRate = production.target > 0 ? (production.achieved / production.target * 100) : 0;
-    
-    html += `
-      <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="font-size:16px;font-weight:600;color:#333;">${shortName}${leader ? '（' + leader + '）' : ''}</span>
-          <span style="font-size:14px;font-weight:600;color:#d32f2f;">损失 ${stats.totalShortage.toLocaleString()} 台</span>
-        </div>
-        <!-- 产量达成数据 -->
-        <div style="background:#f9f9f9;border-radius:8px;padding:10px;margin-bottom:12px;display:flex;justify-content:space-around;text-align:center;">
-          <div>
-            <div style="font-size:11px;color:#888;">目标</div>
-            <div style="font-size:14px;font-weight:600;color:#333;">${production.target.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style="font-size:11px;color:#888;">达成</div>
-            <div style="font-size:14px;font-weight:600;color:#333;">${production.achieved.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style="font-size:11px;color:#888;">达成率</div>
-            <div style="font-size:14px;font-weight:700;color:${rateColor(lineRate)};">${lineRate.toFixed(1)}%</div>
-          </div>
-        </div>
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead>
-            <tr style="background:#f5f5f5;">
-              <th style="padding:8px;text-align:left;border-bottom:1px solid #e0e0e0;">异常原因</th>
-              <th style="padding:8px;text-align:center;border-bottom:1px solid #e0e0e0;width:60px;">次数</th>
-              <th style="padding:8px;text-align:center;border-bottom:1px solid #e0e0e0;width:80px;">损失</th>
-              <th style="padding:8px;text-align:center;border-bottom:1px solid #e0e0e0;width:60px;">分类</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-    
-    // 按损失排序
-    const sortedReasons = Object.entries(stats.reasons).sort((a, b) => b[1].totalShortage - a[1].totalShortage);
-    
-    sortedReasons.forEach(([reason, data]) => {
-      const cat = categoryColors[data.category] || categoryColors.other;
-      html += `
-        <tr style="border-bottom:1px solid #f0f0f0;">
-          <td style="padding:8px;">${reason}</td>
-          <td style="padding:8px;text-align:center;">${data.count}</td>
-          <td style="padding:8px;text-align:center;color:#d32f2f;font-weight:600;">${data.totalShortage.toLocaleString()}</td>
-          <td style="padding:8px;text-align:center;"><span style="background:${cat.bg};color:${cat.text};padding:2px 8px;border-radius:4px;font-size:11px;">${cat.label}</span></td>
-        </tr>
-      `;
-    });
-    
-    html += `</tbody></table></div>`;
-  });
-  
-  html += `<p style="text-align:center;color:#999;font-size:12px;margin-top:16px;">- 产线小时达成录入系统 -</p></div>`;
-  
-  return html;
-}
-
-
-// 生成看板长图
-async function generateBoardImage() {
-  const boardPage = document.getElementById('boardPage');
-  const boardContent = document.getElementById('boardContent');
+// 导出排行榜
+async function exportLeaderboard() {
   const leaderboardSection = document.getElementById('leaderboardSection');
+  const boardContent = document.getElementById('boardContent');
   
   if (!boardContent.innerHTML.trim() || boardContent.querySelector('.empty-state')) {
     alert('请先刷新看板数据');
     return;
   }
+
+  const dateStr = document.getElementById('boardDate').value;
   
-  // 临时隐藏按钮
-  const buttons = boardPage.querySelectorAll('button');
-  buttons.forEach(b => b.style.display = 'none');
+  // 创建临时容器
+  const tempContainer = document.createElement('div');
+  tempContainer.style.cssText = 'position:absolute;left:-9999px;top:0;width:600px;background:#f0f2f5;padding:20px;';
+  
+  // 添加标题
+  const titleDiv = document.createElement('div');
+  titleDiv.innerHTML = `
+    <h2 style="text-align:center;color:#1a73e8;margin-bottom:20px;font-size:24px">📊 ${CONFIG.workshopName} - 产线小时达成看板</h2>
+    <p style="text-align:center;color:#666;margin-bottom:20px">${dateStr}</p>
+  `;
+  tempContainer.appendChild(titleDiv);
+  
+  // 克隆内容
+  const contentClone = boardContent.cloneNode(true);
+  tempContainer.appendChild(contentClone);
+  
+  // 克隆排行榜
+  if (leaderboardSection.style.display !== 'none') {
+    const leaderboardClone = leaderboardSection.cloneNode(true);
+    leaderboardClone.style.display = 'block';
+    tempContainer.appendChild(leaderboardClone);
+  }
+  
+  document.body.appendChild(tempContainer);
   
   try {
-    const dateStr = document.getElementById('boardDate').value;
-    
-    // 关键：先将原始 canvas 转换为 img（在克隆之前！）
-    const originalCanvases = document.querySelectorAll('#boardContent canvas, #leaderboardSection canvas');
-    const canvasMap = new Map();
-    
-    for (const canvas of originalCanvases) {
-      try {
-        const dataUrl = canvas.toDataURL('image/png');
-        const img = document.createElement('img');
-        img.src = dataUrl;
-        img.style.cssText = canvas.style.cssText;
-        img.style.width = canvas.style.width || '100%';
-        img.style.height = canvas.style.height || '220px';
-        canvasMap.set(canvas, img);
-        // 临时替换
-        canvas.parentNode.replaceChild(img, canvas);
-      } catch (e) {
-        console.error('转换 canvas 失败:', e);
-      }
-    }
-    
-    // 等待图片加载
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // 现在克隆（此时 canvas 已被替换为 img）
-    const contentClone = boardContent.cloneNode(true);
-    
-    // 恢复原始 canvas（把 img 换回去）
-    for (const [canvas, img] of canvasMap) {
-      if (img.parentNode) {
-        img.parentNode.replaceChild(canvas, img);
-      }
-    }
-    
-    // 创建临时容器
-    const tempContainer = document.createElement('div');
-    tempContainer.style.cssText = 'position:absolute;left:-9999px;top:0;width:600px;background:#f0f2f5;padding:20px;';
-    
-    // 添加标题
-    const titleDiv = document.createElement('div');
-    titleDiv.innerHTML = `
-      <h2 style="text-align:center;color:#1a73e8;margin-bottom:20px;font-size:24px">📊 产线小时达成看板</h2>
-      <p style="text-align:center;color:#666;margin-bottom:20px">${dateStr}</p>
-    `;
-    tempContainer.appendChild(titleDiv);
-    tempContainer.appendChild(contentClone);
-    
-    // 克隆排行榜
-    if (leaderboardSection && leaderboardSection.style.display !== 'none') {
-      const leaderboardClone = leaderboardSection.cloneNode(true);
-      leaderboardClone.style.display = 'block';
-      tempContainer.appendChild(leaderboardClone);
-    }
-    
-    document.body.appendChild(tempContainer);
-    
-    // 截图
     const resultCanvas = await html2canvas(tempContainer, {
       scale: 2,
       backgroundColor: '#f0f2f5',
@@ -1475,85 +980,22 @@ async function generateBoardImage() {
       logging: false
     });
     
-    document.body.removeChild(tempContainer);
-    
-    // 下载
     const link = document.createElement('a');
-    link.download = `看板长图_${dateStr}.png`;
-    link.href = resultCanvas.toDataURL('image/png');
-    link.click();
-    
-    alert('长图已生成并下载！');
-  } catch (error) {
-    console.error('生成长图失败:', error);
-    alert('生成长图失败，请重试');
-  } finally {
-    buttons.forEach(b => b.style.display = '');
-  }
-}
-
-// 导出排行榜图片
-async function exportLeaderboard() {
-  const leaderboardSection = document.getElementById('leaderboardSection');
-  const leaderboardContent = document.getElementById('leaderboardContent');
-  
-  if (!leaderboardContent.innerHTML.trim()) {
-    alert('请先刷新看板数据');
-    return;
-  }
-  
-  // 临时隐藏按钮
-  const buttons = leaderboardSection.querySelectorAll('button');
-  buttons.forEach(b => b.style.display = 'none');
-  
-  try {
-    const dateStr = document.getElementById('boardDate').value;
-    
-    // 创建临时容器
-    const tempContainer = document.createElement('div');
-    tempContainer.style.cssText = 'position:absolute;left:-9999px;top:0;width:500px;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:24px;border-radius:16px;';
-    
-    // 添加标题
-    const titleDiv = document.createElement('div');
-    titleDiv.innerHTML = `
-      <h2 style="text-align:center;color:#ffd700;margin-bottom:8px;font-size:22px">🏆 线体达成率排行榜</h2>
-      <p style="text-align:center;color:#aaa;margin-bottom:20px;font-size:13px">${dateStr}</p>
-    `;
-    tempContainer.appendChild(titleDiv);
-    
-    // 克隆排行榜内容
-    const contentClone = leaderboardContent.cloneNode(true);
-    tempContainer.appendChild(contentClone);
-    
-    document.body.appendChild(tempContainer);
-    
-    // 截图
-    const resultCanvas = await html2canvas(tempContainer, {
-      scale: 2,
-      backgroundColor: '#1a1a2e',
-      useCORS: true,
-      logging: false
-    });
-    
-    document.body.removeChild(tempContainer);
-    
-    // 下载
-    const link = document.createElement('a');
-    link.download = `排行榜_${dateStr}.png`;
+    link.download = `${CONFIG.workshopName}_看板_${dateStr}.png`;
     link.href = resultCanvas.toDataURL('image/png');
     link.click();
     
     alert('排行榜图片已生成并下载！');
-  } catch (error) {
-    console.error('导出排行榜失败:', error);
-    alert('导出排行榜失败，请重试');
+  } catch(e) {
+    console.error('导出失败:', e);
+    alert('导出失败，请重试');
   } finally {
-    buttons.forEach(b => b.style.display = '');
+    document.body.removeChild(tempContainer);
   }
 }
 
-// 页面加载时初始化
-window.onload = init;
+// 页面加载完成后初始化
+window.addEventListener('load', init);
 </script>
 </body>
 </html>
