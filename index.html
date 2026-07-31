@@ -306,7 +306,7 @@ async function loadLineModels(lineId) {
     
     lineModels[lineId] = (data || []).map(m => ({
       model_name: m.model_name,
-      target_value: m.target_uph
+      target_value: m.target_value
     }));
   } catch(e) {
     console.error('loadLineModels error:', e);
