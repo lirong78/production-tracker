@@ -795,6 +795,40 @@ async function renderBoard() {
       </div>
     `;
 
+    // 每小时产量表格
+    html += `<div class="chart-container" style="margin-bottom:12px;padding:12px">
+      <h3 style="font-size:13px;color:#555;margin-bottom:8px">📋 ${lineData.lineName} 每小时产量明细</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:#f5f5f5;border-bottom:2px solid #ddd">
+            <th style="padding:6px 4px;text-align:left;font-weight:600">时段</th>
+            <th style="padding:6px 4px;text-align:left;font-weight:600">型号</th>
+            <th style="padding:6px 4px;text-align:center;font-weight:600">目标</th>
+            <th style="padding:6px 4px;text-align:center;font-weight:600">达成</th>
+            <th style="padding:6px 4px;text-align:center;font-weight:600">达成率</th>
+            <th style="padding:6px 4px;text-align:left;font-weight:600">异常原因</th>
+          </tr>
+        </thead>
+        <tbody>`;
+    
+    lineData.hourlyData.forEach(h => {
+      const hourLabel = h.hour.replace(':00-','~').replace(':00','');
+      const hourRate = h.target > 0 ? ((h.achieved / h.target) * 100).toFixed(1) : '-';
+      const rateColor = h.achieved >= h.target ? '#4caf50' : '#f44336';
+      const rowBg = h.achieved >= h.target ? '#f9fff9' : '#fff9f9';
+      
+      html += `<tr style="border-bottom:1px solid #eee;background:${rowBg}">
+        <td style="padding:5px 4px;font-weight:500">${hourLabel}</td>
+        <td style="padding:5px 4px">${h.model || '-'}</td>
+        <td style="padding:5px 4px;text-align:center">${h.target}</td>
+        <td style="padding:5px 4px;text-align:center;font-weight:600">${h.achieved}</td>
+        <td style="padding:5px 4px;text-align:center;color:${rateColor};font-weight:600">${hourRate}%</td>
+        <td style="padding:5px 4px;font-size:11px;color:#666">${h.reason || ''}</td>
+      </tr>`;
+    });
+    
+    html += `</tbody></table></div>`;
+
     // 未达标时段
     const issues = lineData.hourlyData.filter(h => !h.isMet && h.achieved > 0);
     if (issues.length > 0) {
