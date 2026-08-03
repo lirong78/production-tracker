@@ -107,7 +107,8 @@ canvas { width: 100% !important; height: 300px !important; }
     <div class="form-row">
       <label>开班时间</label>
       <select id="startTimeSelect" onchange="onStartTimeChange()" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fafafa">
-        <option value="8">8:00（正常开班）</option>
+        <option value="7">7:00（提前开班）</option>
+        <option value="8" selected>8:00（正常开班）</option>
         <option value="9">9:00</option>
         <option value="10">10:00</option>
         <option value="11">11:00</option>
@@ -227,7 +228,7 @@ try {
 }
 
 const TIME_SLOTS = [];
-for (let h = 8; h < 23; h++) {
+for (let h = 7; h < 23; h++) {
   TIME_SLOTS.push(`${h}:00-${h+1}:00`);
 }
 
