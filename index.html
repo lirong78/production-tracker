@@ -104,6 +104,26 @@ canvas { width: 100% !important; height: 300px !important; }
         <option value="">请选择线体</option>
       </select>
     </div>
+    <div class="form-row">
+      <label>开班时间</label>
+      <select id="startTimeSelect" onchange="onStartTimeChange()" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fafafa">
+        <option value="8">8:00（正常开班）</option>
+        <option value="9">9:00</option>
+        <option value="10">10:00</option>
+        <option value="11">11:00</option>
+        <option value="12">12:00</option>
+        <option value="13">13:00</option>
+        <option value="14">14:00</option>
+        <option value="15">15:00</option>
+        <option value="16">16:00</option>
+        <option value="17">17:00</option>
+        <option value="18">18:00</option>
+        <option value="19">19:00</option>
+        <option value="20">20:00</option>
+        <option value="21">21:00</option>
+        <option value="22">22:00</option>
+      </select>
+    </div>
   </div>
 
   <div class="summary" id="summarySection" style="display:none">
@@ -346,12 +366,23 @@ function onLineChange() {
   }
 }
 
+// 开班时间变化
+function onStartTimeChange() {
+  buildTimeGrid();
+}
+
+// 获取开班时间
+function getStartTime() {
+  return parseInt(document.getElementById('startTimeSelect').value) || 8;
+}
+
 // 构建时间网格
 async function buildTimeGrid() {
   const grid = document.getElementById('timeGrid');
   grid.innerHTML = '';
 
   const lineId = document.getElementById('lineSelect').value;
+  const startTime = getStartTime();
   let savedData = null;
 
   try {
@@ -364,7 +395,11 @@ async function buildTimeGrid() {
   const models = getModelsForLine(lineId);
 
   TIME_SLOTS.forEach((slot, i) => {
-    const saved = savedData ? savedData[i] : null;
+    // 提取时间段的起始小时
+    const slotHour = parseInt(slot.split(':')[0]);
+    const isNotStarted = slotHour < startTime;
+    
+    const saved = savedData ? savedData.find(s => s.hour_slot === slot) : null;
     const savedModel = saved ? saved.model : '';
     const savedAchieved = saved ? saved.achieved : '';
     const savedReason = saved ? saved.reason : '';
@@ -372,6 +407,12 @@ async function buildTimeGrid() {
     const row = document.createElement('div');
     row.className = 'time-row';
     row.id = `timeRow_${i}`;
+    
+    // 如果是未开班时间段，添加特殊样式
+    if (isNotStarted) {
+      row.style.background = '#f0f0f0';
+      row.style.opacity = '0.6';
+    }
 
     let modelOptions = '<option value="">选择型号</option>';
     models.forEach(m => {
@@ -379,38 +420,49 @@ async function buildTimeGrid() {
       modelOptions += `<option value="${m.model_name}" data-target="${m.target_value}" ${selected}>${m.model_name} (目标${m.target_value})</option>`;
     });
 
-    row.innerHTML = `
-      <div class="time-header">
-        <span class="time-label">${slot.replace(':00-','~').replace(':00','')}</span>
-        <span class="time-status" id="status_${i}">-</span>
-      </div>
-      <div class="time-inputs">
-        <div>
-          <label>型号</label>
-          <select id="model_${i}" onchange="onModelChange(${i})">
-            ${modelOptions}
-          </select>
-          <div class="time-target" id="target_${i}"></div>
+    // 未开班时间段显示不同的内容
+    if (isNotStarted) {
+      row.innerHTML = `
+        <div class="time-header">
+          <span class="time-label">${slot.replace(':00-','~').replace(':00','')}</span>
+          <span class="time-status" style="background:#e0e0e0;color:#666">未开班</span>
         </div>
-        <div>
-          <label>达成数</label>
-          <input type="number" id="achieved_${i}" value="${savedAchieved}" placeholder="输入达成数" oninput="onAchievedChange(${i})">
+        <div style="font-size:12px;color:#888;padding:8px 0">此时间段在开班时间之前，无需录入</div>
+      `;
+    } else {
+      row.innerHTML = `
+        <div class="time-header">
+          <span class="time-label">${slot.replace(':00-','~').replace(':00','')}</span>
+          <span class="time-status" id="status_${i}">-</span>
         </div>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <div style="flex:1">
-          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">休息分钟数</label>
-          <input type="number" id="rest_${i}" value="${saved ? (saved.rest_minutes || 0) : 0}" min="0" max="60" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px" oninput="onRestChange(${i})">
+        <div class="time-inputs">
+          <div>
+            <label>型号</label>
+            <select id="model_${i}" onchange="onModelChange(${i})">
+              ${modelOptions}
+            </select>
+            <div class="time-target" id="target_${i}"></div>
+          </div>
+          <div>
+            <label>达成数</label>
+            <input type="number" id="achieved_${i}" value="${savedAchieved}" placeholder="输入达成数" oninput="onAchievedChange(${i})">
+          </div>
         </div>
-        <div style="flex:2">
-          <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">未达标原因</label>
-          <input class="time-reason" id="reason_${i}" value="${savedReason}" placeholder="未达标原因（未达标必填）" oninput="onReasonChange(${i})">
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <div style="flex:1">
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">休息分钟数</label>
+            <input type="number" id="rest_${i}" value="${saved ? (saved.rest_minutes || 0) : 0}" min="0" max="60" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px" oninput="onRestChange(${i})">
+          </div>
+          <div style="flex:2">
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">未达标原因</label>
+            <input class="time-reason" id="reason_${i}" value="${savedReason}" placeholder="未达标原因（未达标必填）" oninput="onReasonChange(${i})">
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    }
     grid.appendChild(row);
 
-    if (savedModel && savedAchieved !== '') {
+    if (!isNotStarted && savedModel && savedAchieved !== '') {
       updateRowStatus(i);
     }
   });
@@ -502,10 +554,15 @@ function onReasonChange(index) {
 // 更新汇总
 function updateSummary() {
   const lineId = document.getElementById('lineSelect').value;
+  const startTime = getStartTime();
   let totalAchieved = 0;
   let totalTarget = 0;
 
   TIME_SLOTS.forEach((slot, i) => {
+    // 跳过未开班时间段
+    const slotHour = parseInt(slot.split(':')[0]);
+    if (slotHour < startTime) return;
+    
     const model = document.getElementById(`model_${i}`).value;
     const achieved = parseInt(document.getElementById(`achieved_${i}`).value) || 0;
     const baseTarget = getModelTarget(lineId, model);
@@ -532,10 +589,15 @@ async function saveData() {
 
   const recordDate = getSelectedDate();
   const lineName = getLineName(lineId);
+  const startTime = getStartTime();
   const slots = [];
   let hasMissingReason = false;
 
   TIME_SLOTS.forEach((slot, i) => {
+    // 跳过未开班时间段
+    const slotHour = parseInt(slot.split(':')[0]);
+    if (slotHour < startTime) return;
+    
     const model = document.getElementById(`model_${i}`).value;
     const achieved = parseInt(document.getElementById(`achieved_${i}`).value) || 0;
     const reason = document.getElementById(`reason_${i}`).value.trim();
