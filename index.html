@@ -854,14 +854,14 @@ async function renderBoard() {
     const totalDiffColor = totalDiff >= 0 ? '#4caf50' : '#f44336';
     const totalAchievedBg = totalDiff >= 0 ? 'background:#e8f5e9' : 'background:#ffebee';
     
-    html += `<tr style="border-top:2px solid #333;background:#f5f5f5;font-weight:700">
-      <td style="padding:6px 4px;font-weight:700">合计</td>
-      <td style="padding:6px 4px">-</td>
-      <td style="padding:6px 4px;text-align:center;font-weight:700">${totalTarget}</td>
-      <td style="padding:6px 4px;text-align:center;font-weight:700;${totalAchievedBg};color:${totalDiffColor}">${totalAchieved}</td>
-      <td style="padding:6px 4px;text-align:center;font-weight:700;color:${totalDiffColor}">${totalDiffText}</td>
-      <td style="padding:6px 4px">-</td>
-      <td style="padding:6px 4px">-</td>
+    html += `<tr style="border-top:2px solid #555;background:#e0e0e0;font-weight:700">
+      <td style="padding:10px 4px;font-weight:700;font-size:14px">合计</td>
+      <td style="padding:10px 4px;font-size:14px">-</td>
+      <td style="padding:10px 4px;text-align:center;font-weight:700;font-size:14px">${totalTarget}</td>
+      <td style="padding:10px 4px;text-align:center;font-weight:700;font-size:15px;${totalAchievedBg};color:${totalDiffColor}">${totalAchieved}</td>
+      <td style="padding:10px 4px;text-align:center;font-weight:700;font-size:15px;color:${totalDiffColor}">${totalDiffText}</td>
+      <td style="padding:10px 4px;font-size:14px">-</td>
+      <td style="padding:10px 4px;font-size:14px">-</td>
     </tr>`;
     
     html += `</tbody></table></div>`;
