@@ -195,17 +195,6 @@ canvas { width: 100% !important; height: 300px !important; }
       <p>请选择日期查看看板</p>
     </div>
   </div>
-
-  <!-- 排行榜 -->
-  <div id="leaderboardSection" style="display:none">
-    <div class="chart-container" style="margin-top:20px">
-      <h3 style="font-size:16px;color:#1a73e8;margin-bottom:16px;text-align:center">🏆 线体达成率排行榜</h3>
-      <div id="leaderboardContent"></div>
-      <div style="text-align:center;margin-top:16px">
-        <button class="btn btn-success" onclick="exportLeaderboard()" style="background:#ff9800">📸 导出排行榜图片</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -787,8 +776,6 @@ async function renderBoard() {
 
   if (allLineData.length === 0) {
     content.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>${boardDate} 暂无数据</p></div>`;
-    // 即使没有数据也要显示排行榜（所有线体都是0%）
-    renderLeaderboard([], boardDate);
     return;
   }
 
@@ -926,99 +913,6 @@ async function renderBoard() {
     });
     boardCharts.push(chart);
   });
-
-  // 渲染排行榜
-  renderLeaderboard(allLineData, boardDate);
-}
-
-// 渲染排行榜
-function renderLeaderboard(allLineData, boardDate) {
-  const leaderboardSection = document.getElementById('leaderboardSection');
-  const leaderboardContent = document.getElementById('leaderboardContent');
-
-  // 构建所有线体的达成率数据
-  const lineRates = [];
-
-  // 有数据的线体
-  allLineData.forEach(lineData => {
-    lineRates.push({
-      lineName: lineData.lineName,
-      totalRate: lineData.rate,
-      totalAchieved: lineData.totalAchieved,
-      totalTarget: lineData.totalTarget,
-      hourlyData: lineData.hourlyData,
-      hasData: true
-    });
-  });
-
-  // 没有数据的线体（达成率为0）
-  const linesWithData = allLineData.map(d => d.lineId);
-  lines.forEach(line => {
-    if (!linesWithData.includes(line.id)) {
-      lineRates.push({
-        lineName: line.name,
-        totalRate: 0,
-        totalAchieved: 0,
-        totalTarget: 0,
-        hourlyData: [],
-        hasData: false
-      });
-    }
-  });
-
-  // 按达成率排序
-  lineRates.sort((a, b) => b.totalRate - a.totalRate);
-
-  // 生成排行榜HTML
-  let html = '';
-
-  lineRates.forEach((lineData, idx) => {
-    const rank = idx + 1;
-    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}`;
-    const rateClass = lineData.totalRate >= 90 ? 'rate-high' : lineData.totalRate >= 70 ? 'rate-mid' : 'rate-low';
-
-    html += `
-      <div style="background:#fafafa;border-radius:8px;padding:12px;margin-bottom:10px;border-left:4px solid ${lineData.totalRate >= 90 ? '#4caf50' : lineData.totalRate >= 70 ? '#ff9800' : '#f44336'}">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">${medal}</span>
-            <span style="font-size:14px;font-weight:600">${lineData.lineName}</span>
-          </div>
-          <div style="text-align:right">
-            <div class="${rateClass}" style="font-size:18px;font-weight:700">${lineData.totalRate.toFixed(1)}%</div>
-            ${lineData.hasData ? `<div style="font-size:11px;color:#888">达成${lineData.totalAchieved}/目标${lineData.totalTarget}</div>` : '<div style="font-size:11px;color:#999">未录入</div>'}
-          </div>
-        </div>
-    `;
-
-    // 如果有数据，显示每个时间段的达成率
-    if (lineData.hasData && lineData.hourlyData.length > 0) {
-      html += `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #ddd">`;
-      html += `<div style="font-size:12px;color:#666;margin-bottom:6px">各时段达成率：</div>`;
-      html += `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">`;
-
-      lineData.hourlyData.forEach(h => {
-        const hourLabel = h.hour.replace(':00-', '~').replace(':00', '');
-        const hourRate = h.target > 0 ? ((h.achieved / h.target) * 100).toFixed(1) : 0;
-        const hourRateClass = hourRate >= 100 ? 'rate-high' : hourRate >= 80 ? 'rate-mid' : 'rate-low';
-        const hourIcon = hourRate >= 100 ? '✓' : hourRate >= 80 ? '⚠' : '✗';
-
-        html += `
-          <div style="background:#fff;padding:6px 8px;border-radius:4px;font-size:11px;display:flex;justify-content:space-between;align-items:center">
-            <span style="color:#666">${hourLabel}</span>
-            <span class="${hourRateClass}" style="font-weight:600">${hourRate}% ${hourIcon}</span>
-          </div>
-        `;
-      });
-
-      html += `</div></div>`;
-    }
-
-    html += `</div>`;
-  });
-
-  leaderboardContent.innerHTML = html;
-  leaderboardSection.style.display = 'block';
 }
 
 // 报表弹窗功能
@@ -1516,7 +1410,6 @@ function buildReasonSummaryHtml(startDate, endDate, lineStats, lineProduction, o
 async function generateBoardImage() {
   const boardPage = document.getElementById('boardPage');
   const boardContent = document.getElementById('boardContent');
-  const leaderboardSection = document.getElementById('leaderboardSection');
   
   if (!boardContent.innerHTML.trim() || boardContent.querySelector('.empty-state')) {
     alert('请先刷新看板数据');
@@ -1531,7 +1424,7 @@ async function generateBoardImage() {
     const dateStr = document.getElementById('boardDate').value;
     
     // 关键：先将原始 canvas 转换为 img（在克隆之前！）
-    const originalCanvases = document.querySelectorAll('#boardContent canvas, #leaderboardSection canvas');
+    const originalCanvases = document.querySelectorAll('#boardContent canvas');
     const canvasMap = new Map();
     
     for (const canvas of originalCanvases) {
@@ -1576,13 +1469,6 @@ async function generateBoardImage() {
     tempContainer.appendChild(titleDiv);
     tempContainer.appendChild(contentClone);
     
-    // 克隆排行榜
-    if (leaderboardSection && leaderboardSection.style.display !== 'none') {
-      const leaderboardClone = leaderboardSection.cloneNode(true);
-      leaderboardClone.style.display = 'block';
-      tempContainer.appendChild(leaderboardClone);
-    }
-    
     document.body.appendChild(tempContainer);
     
     // 截图
@@ -1605,66 +1491,6 @@ async function generateBoardImage() {
   } catch (error) {
     console.error('生成长图失败:', error);
     alert('生成长图失败，请重试');
-  } finally {
-    buttons.forEach(b => b.style.display = '');
-  }
-}
-
-// 导出排行榜图片
-async function exportLeaderboard() {
-  const leaderboardSection = document.getElementById('leaderboardSection');
-  const leaderboardContent = document.getElementById('leaderboardContent');
-  
-  if (!leaderboardContent.innerHTML.trim()) {
-    alert('请先刷新看板数据');
-    return;
-  }
-  
-  // 临时隐藏按钮
-  const buttons = leaderboardSection.querySelectorAll('button');
-  buttons.forEach(b => b.style.display = 'none');
-  
-  try {
-    const dateStr = document.getElementById('boardDate').value;
-    
-    // 创建临时容器
-    const tempContainer = document.createElement('div');
-    tempContainer.style.cssText = 'position:absolute;left:-9999px;top:0;width:500px;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:24px;border-radius:16px;';
-    
-    // 添加标题
-    const titleDiv = document.createElement('div');
-    titleDiv.innerHTML = `
-      <h2 style="text-align:center;color:#ffd700;margin-bottom:8px;font-size:22px">🏆 线体达成率排行榜</h2>
-      <p style="text-align:center;color:#aaa;margin-bottom:20px;font-size:13px">${dateStr}</p>
-    `;
-    tempContainer.appendChild(titleDiv);
-    
-    // 克隆排行榜内容
-    const contentClone = leaderboardContent.cloneNode(true);
-    tempContainer.appendChild(contentClone);
-    
-    document.body.appendChild(tempContainer);
-    
-    // 截图
-    const resultCanvas = await html2canvas(tempContainer, {
-      scale: 2,
-      backgroundColor: '#1a1a2e',
-      useCORS: true,
-      logging: false
-    });
-    
-    document.body.removeChild(tempContainer);
-    
-    // 下载
-    const link = document.createElement('a');
-    link.download = `排行榜_${dateStr}.png`;
-    link.href = resultCanvas.toDataURL('image/png');
-    link.click();
-    
-    alert('排行榜图片已生成并下载！');
-  } catch (error) {
-    console.error('导出排行榜失败:', error);
-    alert('导出排行榜失败，请重试');
   } finally {
     buttons.forEach(b => b.style.display = '');
   }
