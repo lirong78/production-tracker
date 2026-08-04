@@ -454,6 +454,19 @@ async function buildTimeGrid() {
             <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">休息分钟数</label>
             <input type="number" id="rest_${i}" value="${saved ? (saved.rest_minutes || 0) : 0}" min="0" max="60" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px" oninput="onRestChange(${i})">
           </div>
+          <div style="flex:1">
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">异常类别</label>
+            <select id="reasonCategory_${i}" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px" onchange="onReasonCategoryChange(${i})">
+              <option value="">请选择</option>
+              <option value="来料异常" ${saved && saved.reason_category === '来料异常' ? 'selected' : ''}>来料异常</option>
+              <option value="物流配送" ${saved && saved.reason_category === '物流配送' ? 'selected' : ''}>物流配送</option>
+              <option value="换型损失" ${saved && saved.reason_category === '换型损失' ? 'selected' : ''}>换型损失</option>
+              <option value="爬坡损失" ${saved && saved.reason_category === '爬坡损失' ? 'selected' : ''}>爬坡损失</option>
+              <option value="设备故障" ${saved && saved.reason_category === '设备故障' ? 'selected' : ''}>设备故障</option>
+              <option value="流水线异常" ${saved && saved.reason_category === '流水线异常' ? 'selected' : ''}>流水线异常</option>
+              <option value="其他" ${saved && saved.reason_category === '其他' ? 'selected' : ''}>其他</option>
+            </select>
+          </div>
           <div style="flex:2">
             <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">未达标原因</label>
             <input class="time-reason" id="reason_${i}" value="${savedReason}" placeholder="未达标原因（未达标必填）" oninput="onReasonChange(${i})">
@@ -545,6 +558,13 @@ function updateRowStatus(index) {
   }
 }
 
+function onReasonCategoryChange(index) {
+  const categoryEl = document.getElementById(`reasonCategory_${index}`);
+  if (categoryEl.value) {
+    categoryEl.classList.remove('required');
+  }
+}
+
 function onReasonChange(index) {
   const reasonEl = document.getElementById(`reason_${index}`);
   if (reasonEl.value.trim()) {
@@ -593,6 +613,7 @@ async function saveData() {
   const startTime = getStartTime();
   const slots = [];
   let hasMissingReason = false;
+  let hasMissingCategory = false;
 
   TIME_SLOTS.forEach((slot, i) => {
     // 跳过未开班时间段
@@ -602,13 +623,20 @@ async function saveData() {
     const model = document.getElementById(`model_${i}`).value;
     const achieved = parseInt(document.getElementById(`achieved_${i}`).value) || 0;
     const reason = document.getElementById(`reason_${i}`).value.trim();
+    const reasonCategory = document.getElementById(`reasonCategory_${i}`).value;
     const baseTarget = getModelTarget(lineId, model);
     const restMinutes = parseInt(document.getElementById(`rest_${i}`).value) || 0;
     const target = getAdjustedTarget(baseTarget, restMinutes);
 
-    if (model && target > 0 && achieved < target && achieved > 0 && !reason) {
-      hasMissingReason = true;
-      document.getElementById(`reason_${i}`).classList.add('required');
+    if (model && target > 0 && achieved < target && achieved > 0) {
+      if (!reason) {
+        hasMissingReason = true;
+        document.getElementById(`reason_${i}`).classList.add('required');
+      }
+      if (!reasonCategory) {
+        hasMissingCategory = true;
+        document.getElementById(`reasonCategory_${i}`).classList.add('required');
+      }
     }
 
     if (model) {
@@ -618,6 +646,7 @@ async function saveData() {
         target_value: target,
         achieved_value: achieved,
         reason: reason || null,
+        reason_category: reasonCategory || null,
         hour_slot: slot,
         record_date: recordDate,
         rest_minutes: restMinutes
@@ -626,6 +655,7 @@ async function saveData() {
   });
 
   if (hasMissingReason) { alert('未达标的时段必须填写异常原因！'); return; }
+  if (hasMissingCategory) { alert('未达标的时段必须选择异常类别！'); return; }
   if (slots.length === 0) { alert('请至少选择一个型号！'); return; }
 
   // 使用 upsert 覆盖已有数据（需要数据库有唯一约束）
@@ -828,17 +858,6 @@ async function renderBoard() {
     });
     
     html += `</tbody></table></div>`;
-
-    // 未达标时段
-    const issues = lineData.hourlyData.filter(h => !h.isMet && h.achieved > 0);
-    if (issues.length > 0) {
-      html += `<div class="issue-list" style="margin-bottom:12px"><h3 style="font-size:13px">⚠️ ${lineData.lineName} 未达标时段</h3>`;
-      issues.forEach(h => {
-        const hourLabel = h.hour.replace(':00-','~').replace(':00','');
-        html += `<div class="issue-item"><span class="issue-time">${hourLabel}</span><span class="issue-reason">${h.model} | 达成${h.achieved}/${h.target}，差${h.target - h.achieved}。原因：${h.reason || '未填写'}</span></div>`;
-      });
-      html += '</div>';
-    }
   });
 
   content.innerHTML = html;
