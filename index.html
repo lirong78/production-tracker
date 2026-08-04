@@ -846,6 +846,24 @@ async function renderBoard() {
       </tr>`;
     });
     
+    // 合计行
+    const totalTarget = lineData.hourlyData.reduce((sum, h) => sum + h.target, 0);
+    const totalAchieved = lineData.hourlyData.reduce((sum, h) => sum + h.achieved, 0);
+    const totalDiff = totalAchieved - totalTarget;
+    const totalDiffText = totalDiff >= 0 ? `+${totalDiff}` : `${totalDiff}`;
+    const totalDiffColor = totalDiff >= 0 ? '#4caf50' : '#f44336';
+    const totalAchievedBg = totalDiff >= 0 ? 'background:#e8f5e9' : 'background:#ffebee';
+    
+    html += `<tr style="border-top:2px solid #333;background:#f5f5f5;font-weight:700">
+      <td style="padding:6px 4px;font-weight:700">合计</td>
+      <td style="padding:6px 4px">-</td>
+      <td style="padding:6px 4px;text-align:center;font-weight:700">${totalTarget}</td>
+      <td style="padding:6px 4px;text-align:center;font-weight:700;${totalAchievedBg};color:${totalDiffColor}">${totalAchieved}</td>
+      <td style="padding:6px 4px;text-align:center;font-weight:700;color:${totalDiffColor}">${totalDiffText}</td>
+      <td style="padding:6px 4px">-</td>
+      <td style="padding:6px 4px">-</td>
+    </tr>`;
+    
     html += `</tbody></table></div>`;
   });
 
