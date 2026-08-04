@@ -469,7 +469,7 @@ async function buildTimeGrid() {
           </div>
           <div style="flex:2">
             <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">未达标原因</label>
-            <input class="time-reason" id="reason_${i}" value="${savedReason}" placeholder="未达标原因（未达标必填）" oninput="onReasonChange(${i})">
+            <input class="time-reason" id="reason_${i}" value="${savedReason}" placeholder="异常原因（选填，可作为补充说明）" oninput="onReasonChange(${i})">
           </div>
         </div>
       `;
@@ -612,7 +612,6 @@ async function saveData() {
   const lineName = getLineName(lineId);
   const startTime = getStartTime();
   const slots = [];
-  let hasMissingReason = false;
   let hasMissingCategory = false;
 
   TIME_SLOTS.forEach((slot, i) => {
@@ -629,10 +628,6 @@ async function saveData() {
     const target = getAdjustedTarget(baseTarget, restMinutes);
 
     if (model && target > 0 && achieved < target && achieved > 0) {
-      if (!reason) {
-        hasMissingReason = true;
-        document.getElementById(`reason_${i}`).classList.add('required');
-      }
       if (!reasonCategory) {
         hasMissingCategory = true;
         document.getElementById(`reasonCategory_${i}`).classList.add('required');
@@ -654,7 +649,6 @@ async function saveData() {
     }
   });
 
-  if (hasMissingReason) { alert('未达标的时段必须填写异常原因！'); return; }
   if (hasMissingCategory) { alert('未达标的时段必须选择异常类别！'); return; }
   if (slots.length === 0) { alert('请至少选择一个型号！'); return; }
 
@@ -714,6 +708,7 @@ async function getSavedData(lineId, date) {
       achieved: row.achieved_value,
       target: row.target_value,
       reason: row.reason || '',
+      reason_category: row.reason_category || '',
       rest_minutes: row.rest_minutes || 0
     }));
 
@@ -772,6 +767,7 @@ async function renderBoard() {
           achieved: record.achieved,
           target: target,
           reason: record.reason,
+          reason_category: record.reason_category,
           isMet: record.achieved >= target
         });
       });
@@ -836,6 +832,7 @@ async function renderBoard() {
             <th style="padding:6px 4px;text-align:center;font-weight:600">目标</th>
             <th style="padding:6px 4px;text-align:center;font-weight:600">达成</th>
             <th style="padding:6px 4px;text-align:center;font-weight:600">达成率</th>
+            <th style="padding:6px 4px;text-align:left;font-weight:600">异常类别</th>
             <th style="padding:6px 4px;text-align:left;font-weight:600">异常原因</th>
           </tr>
         </thead>
@@ -846,6 +843,7 @@ async function renderBoard() {
       const hourRate = h.target > 0 ? ((h.achieved / h.target) * 100).toFixed(1) : '-';
       const rateColor = h.achieved >= h.target ? '#4caf50' : '#f44336';
       const rowBg = h.achieved >= h.target ? '#f9fff9' : '#fff9f9';
+      const categoryStyle = h.reason_category ? 'color:#d32f2f;font-weight:500' : 'color:#999';
       
       html += `<tr style="border-bottom:1px solid #eee;background:${rowBg}">
         <td style="padding:5px 4px;font-weight:500">${hourLabel}</td>
@@ -853,6 +851,7 @@ async function renderBoard() {
         <td style="padding:5px 4px;text-align:center">${h.target}</td>
         <td style="padding:5px 4px;text-align:center;font-weight:600">${h.achieved}</td>
         <td style="padding:5px 4px;text-align:center;color:${rateColor};font-weight:600">${hourRate}%</td>
+        <td style="padding:5px 4px;font-size:11px;${categoryStyle}">${h.reason_category || ''}</td>
         <td style="padding:5px 4px;font-size:11px;color:#666">${h.reason || ''}</td>
       </tr>`;
     });
