@@ -641,29 +641,28 @@ async function saveData() {
   if (hasMissingCategory) { alert('未达标的时段必须选择异常类别！'); return; }
   if (slots.length === 0) { alert('请至少选择一个型号！'); return; }
 
-  // 使用 upsert 覆盖已有数据（需要数据库有唯一约束）
-  const { error } = await db.from('production_records').upsert(slots, {
-    onConflict: 'line_name,record_date,hour_slot',
-    ignoreDuplicates: false
-  });
-
-  if (error) {
-    console.error('保存失败:', error);
-    // 如果 upsert 失败（可能是唯一约束不存在），回退到 delete+insert
-    if (error.message && error.message.includes('constraint')) {
-      console.log('upsert 失败，回退到 delete+insert 模式');
-      const { error: delErr } = await db.from('production_records')
-        .delete()
-        .eq('line_name', lineName)
-        .eq('record_date', recordDate);
-      if (delErr) { alert('❌ 删除旧数据失败: ' + delErr.message); return; }
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const { error: insErr } = await db.from('production_records').insert(slots);
-      if (insErr) { alert('❌ 保存失败: ' + insErr.message); return; }
-    } else {
-      alert('❌ 保存失败: ' + error.message);
-      return;
-    }
+  // 先删除该线体该日期的所有记录，再插入新数据
+  const { error: delErr } = await db.from('production_records')
+    .delete()
+    .eq('line_name', lineName)
+    .eq('record_date', recordDate);
+  
+  if (delErr) { 
+    console.error('删除旧数据失败:', delErr);
+    alert('❌ 删除旧数据失败: ' + delErr.message); 
+    return; 
+  }
+  
+  // 等待一下确保删除完成
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  // 插入新数据
+  const { error: insErr } = await db.from('production_records').insert(slots);
+  
+  if (insErr) { 
+    console.error('保存失败:', insErr);
+    alert('❌ 保存失败: ' + insErr.message); 
+    return; 
   }
 
   alert('✅ ' + recordDate + ' 数据保存成功！');
