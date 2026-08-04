@@ -825,7 +825,7 @@ async function renderBoard() {
     const totalMinutes = lineData.hourlyData.length * 60;
     const totalHours = (totalMinutes / 60).toFixed(1);
     html += `<div class="chart-container" style="margin-bottom:12px;padding:12px">
-      <h3 style="font-size:13px;color:#555;margin-bottom:8px">📋 ${lineData.lineName} 每小时产量明细 <span style="font-size:12px;color:#1a73e8;font-weight:400;margin-left:8px">开班 ${totalHours}h</span></h3>
+      <h3 style="font-size:14px;color:#333;margin-bottom:8px;font-weight:600">📋 ${lineData.lineName} 每小时产量明细 <span style="font-size:14px;color:#1a73e8;font-weight:700;margin-left:10px;background:#e3f2fd;padding:2px 8px;border-radius:4px">开班 ${totalHours}h</span></h3>
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead>
           <tr style="background:#f5f5f5;border-bottom:2px solid #ddd">
@@ -833,7 +833,7 @@ async function renderBoard() {
             <th style="padding:6px 4px;text-align:left;font-weight:600">型号</th>
             <th style="padding:6px 4px;text-align:center;font-weight:600">目标</th>
             <th style="padding:6px 4px;text-align:center;font-weight:600">达成</th>
-            <th style="padding:6px 4px;text-align:center;font-weight:600">达成率</th>
+            <th style="padding:6px 4px;text-align:center;font-weight:600">超产/欠产</th>
             <th style="padding:6px 4px;text-align:left;font-weight:600">异常类别</th>
             <th style="padding:6px 4px;text-align:left;font-weight:600">异常原因</th>
           </tr>
@@ -842,17 +842,18 @@ async function renderBoard() {
     
     lineData.hourlyData.forEach(h => {
       const hourLabel = h.hour.replace(':00-','~').replace(':00','');
-      const hourRate = h.target > 0 ? ((h.achieved / h.target) * 100).toFixed(1) : '-';
-      const rateColor = h.achieved >= h.target ? '#4caf50' : '#f44336';
-      const rowBg = h.achieved >= h.target ? '#f9fff9' : '#fff9f9';
+      const diff = h.achieved - h.target;
+      const diffText = diff >= 0 ? `+${diff}` : `${diff}`;
+      const diffColor = diff >= 0 ? '#4caf50' : '#f44336';
+      const achievedBg = diff >= 0 ? 'background:#e8f5e9' : 'background:#ffebee';
       const categoryStyle = h.reason_category ? 'color:#d32f2f;font-weight:500' : 'color:#999';
       
-      html += `<tr style="border-bottom:1px solid #eee;background:${rowBg}">
+      html += `<tr style="border-bottom:1px solid #eee">
         <td style="padding:5px 4px;font-weight:500">${hourLabel}</td>
         <td style="padding:5px 4px">${h.model || '-'}</td>
         <td style="padding:5px 4px;text-align:center">${h.target}</td>
-        <td style="padding:5px 4px;text-align:center;font-weight:600">${h.achieved}</td>
-        <td style="padding:5px 4px;text-align:center;color:${rateColor};font-weight:600">${hourRate}%</td>
+        <td style="padding:5px 4px;text-align:center;font-weight:700;${achievedBg};color:${diffColor}">${h.achieved}</td>
+        <td style="padding:5px 4px;text-align:center;font-weight:700;color:${diffColor}">${diffText}</td>
         <td style="padding:5px 4px;font-size:11px;${categoryStyle}">${h.reason_category || ''}</td>
         <td style="padding:5px 4px;font-size:11px;color:#666">${h.reason || ''}</td>
       </tr>`;
