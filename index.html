@@ -540,7 +540,6 @@ function updateRowStatus(index) {
     } else if (achieved > 0) {
       statusEl.textContent = `差 ${target - achieved}`;
       statusEl.className = 'time-status status-fail';
-      reasonEl.classList.add('required');
       reasonCategoryEl.classList.add('required');
     } else {
       statusEl.textContent = '-';
@@ -607,7 +606,6 @@ async function saveData() {
   const lineName = getLineName(lineId);
   const startTime = getStartTime();
   const slots = [];
-  let hasMissingReason = false;
   let hasMissingCategory = false;
 
   TIME_SLOTS.forEach((slot, i) => {
@@ -624,10 +622,6 @@ async function saveData() {
     const target = getAdjustedTarget(baseTarget, restMinutes);
 
     if (model && target > 0 && achieved < target && achieved > 0) {
-      if (!reason) {
-        hasMissingReason = true;
-        document.getElementById(`reason_${i}`).classList.add('required');
-      }
       if (!reasonCategory) {
         hasMissingCategory = true;
         document.getElementById(`reasonCategory_${i}`).classList.add('required');
@@ -649,7 +643,6 @@ async function saveData() {
     }
   });
 
-  if (hasMissingReason) { alert('未达标的时段必须填写异常原因！'); return; }
   if (hasMissingCategory) { alert('未达标的时段必须选择异常类别！'); return; }
   if (slots.length === 0) { alert('请至少选择一个型号！'); return; }
 
