@@ -447,16 +447,16 @@ async function buildTimeGrid() {
             <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">异常类别</label>
             <select id="reasonCategory_${i}" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px" onchange="onReasonCategoryChange(${i})">
               <option value="">请选择</option>
-              <option value="来料异常" ${saved && saved.reason_category === '来料异常' ? 'selected' : ''}>来料异常</option>
-              <option value="物流配送" ${saved && saved.reason_category === '物流配送' ? 'selected' : ''}>物流配送</option>
-              <option value="换型损失" ${saved && saved.reason_category === '换型损失' ? 'selected' : ''}>换型损失</option>
-              <option value="爬坡损失" ${saved && saved.reason_category === '爬坡损失' ? 'selected' : ''}>爬坡损失</option>
-              <option value="设备故障" ${saved && saved.reason_category === '设备故障' ? 'selected' : ''}>设备故障</option>
-              <option value="流水线异常" ${saved && saved.reason_category === '流水线异常' ? 'selected' : ''}>流水线异常</option>
-              <option value="其他" ${saved && saved.reason_category === '其他' ? 'selected' : ''}>其他</option>
+              <option value="来料异常" ${saved && saved.reason_category === '来料异常' ? 'selected' : ''}>来料异常（外部）</option>
+              <option value="物流配送" ${saved && saved.reason_category === '物流配送' ? 'selected' : ''}>物流配送（外部）</option>
+              <option value="换型损失" ${saved && saved.reason_category === '换型损失' ? 'selected' : ''}>换型损失（内部）</option>
+              <option value="爬坡损失" ${saved && saved.reason_category === '爬坡损失' ? 'selected' : ''}>爬坡损失（内部）</option>
+              <option value="设备故障" ${saved && saved.reason_category === '设备故障' ? 'selected' : ''}>设备故障（外部）</option>
+              <option value="流水线异常" ${saved && saved.reason_category === '流水线异常' ? 'selected' : ''}>流水线异常（外部）</option>
+              <option value="人员异常" ${saved && saved.reason_category === '人员异常' ? 'selected' : ''}>人员异常（内部）</option>
               <option value="试制试产" ${saved && saved.reason_category === '试制试产' ? 'selected' : ''}>试制试产</option>
-              <option value="人员异常" ${saved && saved.reason_category === '人员异常' ? 'selected' : ''}>人员异常</option>
               <option value="返工" ${saved && saved.reason_category === '返工' ? 'selected' : ''}>返工</option>
+              <option value="其他" ${saved && saved.reason_category === '其他' ? 'selected' : ''}>其他</option>
             </select>
           </div>
           <div style="flex:2">
