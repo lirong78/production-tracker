@@ -933,17 +933,32 @@ async function renderBoard() {
     
     lineData.hourlyData.forEach(h => {
       const hourLabel = h.hour.replace(':00-','~').replace(':00','');
-      const diff = h.achieved - h.target;
-      const diffText = diff >= 0 ? `+${diff}` : `${diff}`;
-      const diffColor = diff >= 0 ? '#4caf50' : '#f44336';
-      const achievedBg = diff >= 0 ? 'background:#e8f5e9' : 'background:#ffebee';
-      const categoryStyle = h.reason_category ? 'color:#d32f2f;font-weight:500' : 'color:#999';
+      // 不计入目标的异常类别
+      const excludeCategories = ['试制试产', '返工', '支援'];
+      const isExcluded = excludeCategories.includes(h.reason_category);
+      
+      let diff, diffText, diffColor, achievedBg;
+      if (isExcluded) {
+        // 不计入目标的时段
+        diff = 0;
+        diffText = '-';
+        diffColor = '#999';
+        achievedBg = 'background:#f5f5f5';
+      } else {
+        diff = h.achieved - h.target;
+        diffText = diff >= 0 ? `+${diff}` : `${diff}`;
+        diffColor = diff >= 0 ? '#4caf50' : '#f44336';
+        achievedBg = diff >= 0 ? 'background:#e8f5e9' : 'background:#ffebee';
+      }
+      
+      const categoryStyle = h.reason_category ? (isExcluded ? 'color:#999;font-weight:500' : 'color:#d32f2f;font-weight:500') : 'color:#999';
+      const targetText = isExcluded ? '不计入' : h.target;
       
       html += `<tr style="border-bottom:1px solid #eee">
         <td style="padding:5px 4px;font-weight:500">${hourLabel}</td>
         <td style="padding:5px 4px">${h.model || '-'}</td>
-        <td style="padding:5px 4px;text-align:center">${h.target}</td>
-        <td style="padding:5px 4px;text-align:center;font-weight:700;${achievedBg};color:${diffColor}">${h.achieved}</td>
+        <td style="padding:5px 4px;text-align:center;color:${isExcluded ? '#999' : '#333'}">${targetText}</td>
+        <td style="padding:5px 4px;text-align:center;font-weight:700;${achievedBg};color:${isExcluded ? '#666' : diffColor}">${h.achieved}</td>
         <td style="padding:5px 4px;text-align:center;font-weight:700;color:${diffColor}">${diffText}</td>
         <td style="padding:5px 4px;font-size:11px;${categoryStyle}">${h.reason_category || ''}</td>
         <td style="padding:5px 4px;font-size:11px;color:#666">${h.reason || ''}</td>
