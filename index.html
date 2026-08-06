@@ -563,7 +563,17 @@ function updateRowStatus(index) {
   const achieved = parseInt(document.getElementById(`achieved_${index}`).value) || 0;
   const baseTarget = getModelTarget(lineId, model);
   const restMinutes = parseInt(document.getElementById(`rest_${index}`).value) || 0;
-  const target = getAdjustedTarget(baseTarget, restMinutes);
+  const reasonCategory = document.getElementById(`reasonCategory_${index}`).value;
+  
+  // 不计入目标的异常类别
+  const excludeCategories = ['试制试产', '返工', '支援'];
+  const isExcluded = excludeCategories.includes(reasonCategory);
+  
+  let target = getAdjustedTarget(baseTarget, restMinutes);
+  if (isExcluded) {
+    target = 0; // 不计入目标
+  }
+  
   const targetEl = document.getElementById(`target_${index}`);
   const statusEl = document.getElementById(`status_${index}`);
   const reasonEl = document.getElementById(`reason_${index}`);
@@ -571,24 +581,46 @@ function updateRowStatus(index) {
 
   if (model && baseTarget > 0) {
     // 显示调整后的目标
-    if (restMinutes > 0) {
-      targetEl.textContent = `目标: ${target} (休息${restMinutes}分钟)`;
-    } else {
-      targetEl.textContent = `目标: ${target}`;
-    }
-
-    if (achieved >= target) {
-      statusEl.textContent = '✓ 达标';
-      statusEl.className = 'time-status status-ok';
-      reasonEl.classList.remove('required');
-      reasonCategoryEl.classList.remove('required');
-    } else if (achieved > 0) {
-      statusEl.textContent = `差 ${target - achieved}`;
-      statusEl.className = 'time-status status-fail';
-      reasonCategoryEl.classList.add('required');
-    } else {
+    if (isExcluded) {
+      targetEl.textContent = `不计入目标（${reasonCategory}）`;
+      targetEl.style.color = '#999';
       statusEl.textContent = '-';
       statusEl.className = 'time-status';
+      reasonCategoryEl.classList.remove('required');
+    } else if (restMinutes > 0) {
+      targetEl.textContent = `目标: ${target} (休息${restMinutes}分钟)`;
+      targetEl.style.color = '';
+      
+      if (achieved >= target) {
+        statusEl.textContent = '✓ 达标';
+        statusEl.className = 'time-status status-ok';
+        reasonEl.classList.remove('required');
+        reasonCategoryEl.classList.remove('required');
+      } else if (achieved > 0) {
+        statusEl.textContent = `差 ${target - achieved}`;
+        statusEl.className = 'time-status status-fail';
+        reasonCategoryEl.classList.add('required');
+      } else {
+        statusEl.textContent = '-';
+        statusEl.className = 'time-status';
+      }
+    } else {
+      targetEl.textContent = `目标: ${target}`;
+      targetEl.style.color = '';
+      
+      if (achieved >= target) {
+        statusEl.textContent = '✓ 达标';
+        statusEl.className = 'time-status status-ok';
+        reasonEl.classList.remove('required');
+        reasonCategoryEl.classList.remove('required');
+      } else if (achieved > 0) {
+        statusEl.textContent = `差 ${target - achieved}`;
+        statusEl.className = 'time-status status-fail';
+        reasonCategoryEl.classList.add('required');
+      } else {
+        statusEl.textContent = '-';
+        statusEl.className = 'time-status';
+      }
     }
   } else {
     targetEl.textContent = '';
@@ -602,6 +634,9 @@ function onReasonCategoryChange(index) {
   if (categoryEl.value) {
     categoryEl.classList.remove('required');
   }
+  // 更新行状态和目标显示
+  updateRowStatus(index);
+  updateSummary();
 }
 
 function onReasonChange(index) {
@@ -617,6 +652,9 @@ function updateSummary() {
   const startTime = getStartTime();
   let totalAchieved = 0;
   let totalTarget = 0;
+  
+  // 不计入目标的异常类别
+  const excludeCategories = ['试制试产', '返工', '支援'];
 
   TIME_SLOTS.forEach((slot, i) => {
     // 跳过未开班时间段
@@ -627,7 +665,13 @@ function updateSummary() {
     const achieved = parseInt(document.getElementById(`achieved_${i}`).value) || 0;
     const baseTarget = getModelTarget(lineId, model);
     const restMinutes = parseInt(document.getElementById(`rest_${i}`).value) || 0;
-    const target = getAdjustedTarget(baseTarget, restMinutes);
+    const reasonCategory = document.getElementById(`reasonCategory_${i}`).value;
+    
+    // 不计入目标的异常类别，目标设为0
+    let target = getAdjustedTarget(baseTarget, restMinutes);
+    if (excludeCategories.includes(reasonCategory)) {
+      target = 0;
+    }
 
     totalAchieved += achieved;
     totalTarget += target;
@@ -653,6 +697,9 @@ async function saveData() {
   const slots = [];
   let hasMissingCategory = false;
 
+  // 不计入目标的异常类别
+  const excludeCategories = ['试制试产', '返工', '支援'];
+
   TIME_SLOTS.forEach((slot, i) => {
     // 跳过未开班时间段
     const slotHour = parseInt(slot.split(':')[0]);
@@ -664,7 +711,12 @@ async function saveData() {
     const reasonCategory = document.getElementById(`reasonCategory_${i}`).value;
     const baseTarget = getModelTarget(lineId, model);
     const restMinutes = parseInt(document.getElementById(`rest_${i}`).value) || 0;
-    const target = getAdjustedTarget(baseTarget, restMinutes);
+    
+    // 不计入目标的异常类别，目标设为0
+    let target = getAdjustedTarget(baseTarget, restMinutes);
+    if (excludeCategories.includes(reasonCategory)) {
+      target = 0;
+    }
 
     if (model && target > 0 && achieved < target && achieved > 0) {
       if (!reasonCategory) {
