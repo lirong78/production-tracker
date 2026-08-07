@@ -745,11 +745,11 @@ async function saveData() {
       }
     }
 
-    // 保存条件：有型号，或者选择了不计入目标的异常类别
-    if (model || excludeCategories.includes(reasonCategory)) {
+    // 保存条件：必须有型号
+    if (model) {
       slots.push({
         line_name: lineName,
-        model_name: model || null,
+        model_name: model,
         target_value: target,
         achieved_value: achieved,
         reason: reason || null,
