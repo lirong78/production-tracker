@@ -1313,83 +1313,129 @@ async function generateReasonSummary() {
       return;
     }
     
-    // 计算每条线的总产量和达成（所有记录，不只是异常记录）
+    // 需要剔除的异常类别（只剔除产能目标，异常分析保留）
+    const EXCLUDE_CATEGORIES = ['返工', '试制试产', '支援'];
+    
+    // 计算每条线的总产量和达成（剔除返工/试制试产/支援）
     const lineProduction = {};
+    let totalExcludedHours = 0;
+    
     data.forEach(record => {
       const lineName = record.line_name || '';
       const target = record.target_value || 0;
       const achieved = record.achieved_value || 0;
+      const reasonCategory = record.reason_category || '';
       
       if (!lineProduction[lineName]) {
-        lineProduction[lineName] = { target: 0, achieved: 0 };
+        lineProduction[lineName] = { target: 0, achieved: 0, excludedHours: 0 };
       }
-      lineProduction[lineName].target += target;
-      lineProduction[lineName].achieved += achieved;
+      
+      // 剔除返工/试制试产/支援
+      if (EXCLUDE_CATEGORIES.includes(reasonCategory)) {
+        lineProduction[lineName].excludedHours++;
+        totalExcludedHours++;
+      } else {
+        lineProduction[lineName].target += target;
+        lineProduction[lineName].achieved += achieved;
+      }
     });
     
-    // 筛选有异常原因的记录
-    const reasonRecords = data.filter(d => d.reason && d.reason.trim());
+    // 异常分析：包含所有未达标记录
+    const reasonRecords = data.filter(d => {
+      const target = d.target_value || 0;
+      const achieved = d.achieved_value || 0;
+      return target > 0 && achieved < target && achieved > 0;
+    });
     
     if (reasonRecords.length === 0) {
       alert('该日期范围没有异常记录');
       return;
     }
     
-    // 内外部原因分类关键词
-    const INTERNAL_KW = ['员工', '熟练度', '品质', '不良', '设备', '换型', '测试', '故障', '停线', '切换', '新员工', '复测'];
-    const EXTERNAL_KW = ['物料', '来料', '供应商', '外部', '其他部门', '停电', '环境'];
-    
-    function classifyReason(reason) {
-      for (const kw of EXTERNAL_KW) {
-        if (reason.includes(kw)) return 'external';
+    // 异常类别推断函数
+    function inferCategory(record) {
+      const reasonCategory = record.reason_category || '';
+      const reason = (record.reason || '').toLowerCase();
+      
+      if (reasonCategory) return reasonCategory;
+      
+      if (reason.includes('来料') || reason.includes('物料') || reason.includes('上盖来料') || (reason.includes('下盖') && (reason.includes('不良') || reason.includes('划伤')))) {
+        return '来料异常';
+      } else if (reason.includes('物流') || reason.includes('配送') || reason.includes('发料') || reason.includes('送料')) {
+        return '物流配送';
+      } else if (reason.includes('换型') || reason.includes('切换') || reason.includes('转产')) {
+        return '换型损失';
+      } else if (reason.includes('爬坡') || reason.includes('熟练') || reason.includes('不熟练') || reason.includes('适应') || reason.includes('新手')) {
+        return '爬坡损失';
+      } else if (reason.includes('设备') || reason.includes('故障') || reason.includes('测试') || reason.includes('UV') || reason.includes('点胶机') || reason.includes('镭雕机') || reason.includes('螺丝机') || reason.includes('螺钉机') || reason.includes('气密')) {
+        return '设备故障';
+      } else if (reason.includes('流水线') || reason.includes('线体') || reason.includes('回板') || reason.includes('夹爪')) {
+        return '流水线异常';
+      } else if (reason.includes('人员') || reason.includes('请假') || reason.includes('减编') || reason.includes('不稳定') || reason.includes('中暑')) {
+        return '人员异常';
+      } else if (reason) {
+        return '其他';
       }
-      for (const kw of INTERNAL_KW) {
-        if (reason.includes(kw)) return 'internal';
-      }
-      return 'other';
+      return '未填写';
     }
     
-    // 按线体汇总异常
+    // 按线体+异常类别汇总
     const lineStats = {};
     
     reasonRecords.forEach(record => {
       const lineName = record.line_name || '';
-      const reason = record.reason.trim();
+      const reason = record.reason || '';
       const target = record.target_value || 0;
       const achieved = record.achieved_value || 0;
-      const shortage = target - achieved;
+      const impact = target - achieved;
+      
+      // 损失工时 = 影响台数 / 目标值 × 1小时
+      const lostHours = target > 0 ? impact / target : 0;
+      
+      const cat = inferCategory(record);
       
       if (!lineStats[lineName]) {
         lineStats[lineName] = {
-          reasons: {},
-          totalShortage: 0
+          categories: {},
+          totalLostHours: 0,
+          totalImpact: 0,
+          totalCount: 0
         };
       }
       
-      if (!lineStats[lineName].reasons[reason]) {
-        lineStats[lineName].reasons[reason] = {
+      if (!lineStats[lineName].categories[cat]) {
+        lineStats[lineName].categories[cat] = {
           count: 0,
-          totalShortage: 0,
-          category: classifyReason(reason)
+          totalImpact: 0,
+          lostHours: 0,
+          details: []
         };
       }
       
-      lineStats[lineName].reasons[reason].count++;
-      lineStats[lineName].reasons[reason].totalShortage += shortage;
-      lineStats[lineName].totalShortage += shortage;
+      lineStats[lineName].categories[cat].count++;
+      lineStats[lineName].categories[cat].totalImpact += impact;
+      lineStats[lineName].categories[cat].lostHours += lostHours;
+      lineStats[lineName].categories[cat].details.push({
+        date: record.record_date,
+        hour: record.hour_slot,
+        reason: reason,
+        impact: impact,
+        lostHours: lostHours
+      });
+      
+      lineStats[lineName].totalLostHours += lostHours;
+      lineStats[lineName].totalImpact += impact;
+      lineStats[lineName].totalCount++;
     });
     
     // 计算整体损失
-    let totalTarget = 0, totalAchieved = 0, totalLoss = 0;
-    let totalInternalLoss = 0, totalExternalLoss = 0, totalOtherLoss = 0;
+    let totalLostHours = 0, totalImpact = 0, totalCount = 0;
+    let totalTarget = 0, totalAchieved = 0;
     
     Object.values(lineStats).forEach(stats => {
-      totalLoss += stats.totalShortage;
-      Object.values(stats.reasons).forEach(reasonData => {
-        if (reasonData.category === 'internal') totalInternalLoss += reasonData.totalShortage;
-        else if (reasonData.category === 'external') totalExternalLoss += reasonData.totalShortage;
-        else totalOtherLoss += reasonData.totalShortage;
-      });
+      totalLostHours += stats.totalLostHours;
+      totalImpact += stats.totalImpact;
+      totalCount += stats.totalCount;
     });
     
     Object.values(lineProduction).forEach(p => {
@@ -1400,11 +1446,12 @@ async function generateReasonSummary() {
     const overallStats = {
       totalTarget,
       totalAchieved,
-      totalLoss,
       totalRate: totalTarget > 0 ? (totalAchieved / totalTarget * 100) : 0,
-      totalInternalLoss,
-      totalExternalLoss,
-      totalOtherLoss
+      totalDiff: totalAchieved - totalTarget,
+      totalExcludedHours,
+      totalLostHours,
+      totalImpact,
+      totalCount
     };
     
     // 构建 HTML
@@ -1429,128 +1476,108 @@ async function generateReasonSummary() {
     
     // 下载
     const link = document.createElement('a');
-    link.download = `异常汇总_${startDate}_至_${endDate}.png`;
+    link.download = `产量达成与异常损失报告_${startDate}_至_${endDate}.png`;
     link.href = resultCanvas.toDataURL('image/png');
     link.click();
     
-    alert('异常汇总已生成！');
+    alert('产量达成与异常损失报告已生成！');
     
   } catch (error) {
-    console.error('生成异常汇总失败:', error);
-    alert('生成异常汇总失败: ' + error.message);
+    console.error('生成报告失败:', error);
+    alert('生成报告失败: ' + error.message);
   }
 }
 
-// 构建异常汇总 HTML
+// 构建产量达成与异常损失报告 HTML
 function buildReasonSummaryHtml(startDate, endDate, lineStats, lineProduction, overallStats) {
-  const categoryColors = {
-    internal: { bg: '#fff3e0', text: '#e65100', label: '内部' },
-    external: { bg: '#e3f2fd', text: '#1565c0', label: '外部' },
-    other: { bg: '#f5f5f5', text: '#616161', label: '其他' }
-  };
-  
+  const colors = ['#FF6B6B', '#FFA07A', '#FFD700', '#87CEEB', '#98FB98', '#DDA0DD', '#F0E68C', '#B0C4DE', '#95a5a6', '#E6B89C'];
   const rateColor = (rate) => rate >= 100 ? '#4caf50' : rate >= 90 ? '#ff9800' : '#f44336';
   
   let html = `
     <div style="padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-      <h2 style="text-align:center;color:#d32f2f;margin-bottom:8px;font-size:24px;">📋 异常原因汇总</h2>
+      <h2 style="text-align:center;color:#1a73e8;margin-bottom:8px;font-size:24px;">📊 产量达成与异常损失报告</h2>
       <p style="text-align:center;color:#666;margin-bottom:16px;font-size:14px;">${startDate} 至 ${endDate}</p>
       
-      <!-- 整体损失汇总 -->
-      <div style="background:linear-gradient(135deg,#d32f2f,#b71c1c);color:#fff;border-radius:12px;padding:16px;margin-bottom:16px;">
-        <div style="font-size:14px;font-weight:600;margin-bottom:12px;text-align:center;">⚠️ 整体损失情况</div>
-        <div style="display:flex;justify-content:space-around;text-align:center;">
-          <div>
-            <div style="font-size:11px;opacity:0.85;">总损失</div>
-            <div style="font-size:24px;font-weight:700;">${overallStats.totalLoss.toLocaleString()}</div>
-            <div style="font-size:11px;opacity:0.85;">台</div>
-          </div>
-          <div style="border-left:1px solid rgba(255,255,255,0.3);"></div>
-          <div>
-            <div style="font-size:11px;opacity:0.85;">内部损失</div>
-            <div style="font-size:20px;font-weight:700;color:#ffcc80;">${overallStats.totalInternalLoss.toLocaleString()}</div>
-          </div>
-          <div style="border-left:1px solid rgba(255,255,255,0.3);"></div>
-          <div>
-            <div style="font-size:11px;opacity:0.85;">外部损失</div>
-            <div style="font-size:20px;font-weight:700;color:#90caf9;">${overallStats.totalExternalLoss.toLocaleString()}</div>
-          </div>
-        </div>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.2);display:flex;justify-content:space-around;text-align:center;">
-          <div>
-            <div style="font-size:11px;opacity:0.85;">总目标</div>
-            <div style="font-size:16px;font-weight:600;">${overallStats.totalTarget.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style="font-size:11px;opacity:0.85;">总达成</div>
-            <div style="font-size:16px;font-weight:600;">${overallStats.totalAchieved.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style="font-size:11px;opacity:0.85;">达成率</div>
-            <div style="font-size:16px;font-weight:700;color:${rateColor(overallStats.totalRate)};">${overallStats.totalRate.toFixed(1)}%</div>
-          </div>
-        </div>
+      <!-- 总体统计 -->
+      <div style="background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center;">
+        <div style="font-size:13px;opacity:0.85;">有效目标: ${overallStats.totalTarget.toLocaleString()}台 | 有效达成: ${overallStats.totalAchieved.toLocaleString()}台 | 达成率: <span style="color:${rateColor(overallStats.totalRate)};font-weight:700;">${overallStats.totalRate.toFixed(1)}%</span></div>
+        <div style="font-size:13px;opacity:0.85;margin-top:4px;">已剔除${overallStats.totalExcludedHours}小时(返工/试制试产/支援) | 异常${overallStats.totalCount}次 | 影响${overallStats.totalImpact.toLocaleString()}台 | 损失${overallStats.totalLostHours.toFixed(2)}小时</div>
       </div>
+      
+      <!-- 各线体产量达成情况 -->
+      <h3 style="font-size:16px;color:#333;margin-bottom:12px;">📋 各线体产量达成情况</h3>
   `;
   
-  // 按总损失排序
-  const sortedLines = Object.entries(lineStats).sort((a, b) => b[1].totalShortage - a[1].totalShortage);
+  // 按达成率排序
+  const sortedLines = Object.entries(lineProduction).sort((a, b) => {
+    const rateA = a[1].target > 0 ? a[1].achieved / a[1].target : 0;
+    const rateB = b[1].target > 0 ? b[1].achieved / b[1].target : 0;
+    return rateB - rateA;
+  });
   
-  sortedLines.forEach(([lineName, stats]) => {
-    // 提取班长
-    let leader = '';
-    const match = lineName.match(/（(.+?)）/);
-    if (match) leader = match[1];
-    const shortName = lineName.replace(/（.+?）/, '');
-    
-    // 获取该线的产量达成数据
-    const production = lineProduction[lineName] || { target: 0, achieved: 0 };
-    const lineRate = production.target > 0 ? (production.achieved / production.target * 100) : 0;
+  const medals = ['🥇', '🥈', '🥉'];
+  
+  sortedLines.forEach(([lineName, production], idx) => {
+    const rate = production.target > 0 ? (production.achieved / production.target * 100) : 0;
+    const diff = production.achieved - production.target;
+    const medal = idx < 3 ? medals[idx] : `${idx + 1}`;
     
     html += `
-      <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="font-size:16px;font-weight:600;color:#333;">${shortName}${leader ? '（' + leader + '）' : ''}</span>
-          <span style="font-size:14px;font-weight:600;color:#d32f2f;">损失 ${stats.totalShortage.toLocaleString()} 台</span>
+      <div style="background:#fff;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:20px;">${medal}</span>
+          <span style="font-size:14px;font-weight:600;color:#333;">${lineName}</span>
         </div>
-        <!-- 产量达成数据 -->
-        <div style="background:#f9f9f9;border-radius:8px;padding:10px;margin-bottom:12px;display:flex;justify-content:space-around;text-align:center;">
-          <div>
-            <div style="font-size:11px;color:#888;">目标</div>
-            <div style="font-size:14px;font-weight:600;color:#333;">${production.target.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style="font-size:11px;color:#888;">达成</div>
-            <div style="font-size:14px;font-weight:600;color:#333;">${production.achieved.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style="font-size:11px;color:#888;">达成率</div>
-            <div style="font-size:14px;font-weight:700;color:${rateColor(lineRate)};">${lineRate.toFixed(1)}%</div>
-          </div>
+        <div style="display:flex;gap:16px;align-items:center;">
+          <span style="font-size:13px;color:#666;">目标: ${production.target.toLocaleString()}</span>
+          <span style="font-size:13px;color:#666;">达成: ${production.achieved.toLocaleString()}</span>
+          <span style="font-size:14px;font-weight:700;color:${rateColor(rate)};">${rate.toFixed(1)}%</span>
+          <span style="font-size:13px;font-weight:600;color:${diff >= 0 ? '#4caf50' : '#f44336'};">${diff >= 0 ? '+' : ''}${diff.toLocaleString()}</span>
+        </div>
+      </div>
+    `;
+  });
+  
+  // 各线体重点异常分析
+  html += `<h3 style="font-size:16px;color:#d32f2f;margin:20px 0 12px 0;">📋 各线体重点异常分析</h3>`;
+  
+  Object.entries(lineStats).forEach(([lineName, stats], lineIdx) => {
+    html += `
+      <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border-left:4px solid ${colors[lineIdx % colors.length]};">
+        <div style="font-size:15px;font-weight:600;color:#333;margin-bottom:12px;">
+          ${lineName}：<span style="color:#d32f2f;">总损失 ${stats.totalLostHours.toFixed(2)} 小时</span>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr style="background:#f5f5f5;">
-              <th style="padding:8px;text-align:left;border-bottom:1px solid #e0e0e0;">异常原因</th>
+              <th style="padding:8px;text-align:left;border-bottom:1px solid #e0e0e0;">异常类别</th>
               <th style="padding:8px;text-align:center;border-bottom:1px solid #e0e0e0;width:60px;">次数</th>
-              <th style="padding:8px;text-align:center;border-bottom:1px solid #e0e0e0;width:80px;">损失</th>
-              <th style="padding:8px;text-align:center;border-bottom:1px solid #e0e0e0;width:60px;">分类</th>
+              <th style="padding:8px;text-align:center;border-bottom:1px solid #e0e0e0;width:80px;">损失工时</th>
+              <th style="padding:8px;text-align:center;border-bottom:1px solid #e0e0e0;width:60px;">占比</th>
             </tr>
           </thead>
           <tbody>
     `;
     
-    // 按损失排序
-    const sortedReasons = Object.entries(stats.reasons).sort((a, b) => b[1].totalShortage - a[1].totalShortage);
+    // 按损失工时排序，取前3个
+    const sortedCats = Object.entries(stats.categories).sort((a, b) => b[1].lostHours - a[1].lostHours).slice(0, 3);
     
-    sortedReasons.forEach(([reason, data]) => {
-      const cat = categoryColors[data.category] || categoryColors.other;
+    sortedCats.forEach(([cat, data], catIdx) => {
+      const pct = stats.totalLostHours > 0 ? (data.lostHours / stats.totalLostHours * 100) : 0;
+      
+      // 典型案例
+      const topCase = data.details.sort((a, b) => b.lostHours - a.lostHours)[0];
+      const caseText = topCase ? `${topCase.date.slice(5)} ${topCase.hour?.slice(0, 5) || ''} - ${topCase.reason?.slice(0, 30) || ''}... 损失${topCase.lostHours.toFixed(2)}小时` : '';
+      
       html += `
         <tr style="border-bottom:1px solid #f0f0f0;">
-          <td style="padding:8px;">${reason}</td>
-          <td style="padding:8px;text-align:center;">${data.count}</td>
-          <td style="padding:8px;text-align:center;color:#d32f2f;font-weight:600;">${data.totalShortage.toLocaleString()}</td>
-          <td style="padding:8px;text-align:center;"><span style="background:${cat.bg};color:${cat.text};padding:2px 8px;border-radius:4px;font-size:11px;">${cat.label}</span></td>
+          <td style="padding:8px;">
+            <div style="font-weight:600;">${catIdx + 1}. ${cat}</div>
+            ${caseText ? `<div style="font-size:11px;color:#888;margin-top:4px;">典型: ${caseText}</div>` : ''}
+          </td>
+          <td style="padding:8px;text-align:center;">${data.count}次</td>
+          <td style="padding:8px;text-align:center;color:#d32f2f;font-weight:600;">${data.lostHours.toFixed(2)}h</td>
+          <td style="padding:8px;text-align:center;color:#666;">${pct.toFixed(1)}%</td>
         </tr>
       `;
     });
@@ -1558,7 +1585,13 @@ function buildReasonSummaryHtml(startDate, endDate, lineStats, lineProduction, o
     html += `</tbody></table></div>`;
   });
   
-  html += `<p style="text-align:center;color:#999;font-size:12px;margin-top:16px;">- 产线小时达成录入系统 -</p></div>`;
+  html += `
+      <p style="text-align:center;color:#999;font-size:12px;margin-top:16px;">
+        损失工时计算：影响台数 / 目标值 × 1小时 | 产能目标已剔除返工/试制试产/支援，异常分析包含所有类别<br>
+        - 产线小时达成录入系统 -
+      </p>
+    </div>
+  `;
   
   return html;
 }
