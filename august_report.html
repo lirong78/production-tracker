@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background: #f5f5f5;
+    padding: 20px;
+    width: 800px;
+}
+.container {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.title {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a237e;
+    margin-bottom: 8px;
+}
+.subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 20px;
+}
+.summary-box {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 20px;
+    color: #fff;
+}
+.summary-box .label { font-size: 12px; opacity: 0.9; }
+.summary-box .value { font-size: 24px; font-weight: 700; margin: 4px 0; }
+.summary-box .detail { font-size: 12px; opacity: 0.85; }
+.section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a237e;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e8eaf6;
+}
+.section-title .num {
+    display: inline-block;
+    background: #1a237e;
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 22px;
+    font-size: 12px;
+    margin-right: 8px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+th {
+    background: #e8eaf6;
+    color: #1a237e;
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #c5cae9;
+}
+td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #eee;
+}
+tr:hover { background: #fafafa; }
+.rate-high { color: #4caf50; font-weight: 700; }
+.rate-mid { color: #ff9800; font-weight: 700; }
+.rate-low { color: #f44336; font-weight: 700; }
+.over { color: #4caf50; font-weight: 600; }
+.under { color: #f44336; font-weight: 600; }
+.medal { font-size: 16px; margin-right: 4px; }
+.total-row {
+    background: #f5f5f5;
+    font-weight: 700;
+}
+.total-row td {
+    border-top: 2px solid #333;
+    padding: 12px 8px;
+}
+.pct-bar {
+    display: inline-block;
+    height: 14px;
+    border-radius: 7px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+.detail-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+    border-left: 4px solid #1a237e;
+}
+.detail-card .card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a237e;
+    margin-bottom: 10px;
+}
+.detail-card .card-stats {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+}
+.line-detail {
+    background: #fff;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+.line-detail .line-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 6px;
+}
+.reason-item {
+    font-size: 12px;
+    color: #555;
+    padding: 4px 0 4px 12px;
+    border-left: 2px solid #e0e0e0;
+    margin-bottom: 4px;
+}
+.suggestion-box {
+    background: #fff3e0;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 10px;
+    border-left: 4px solid #ff9800;
+}
+.suggestion-box .sug-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #e65100;
+    margin-bottom: 6px;
+}
+.suggestion-box .sug-content {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.6;
+}
+.highlight { color: #d32f2f; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="title">地刷车间8月产能达成及异常分析报告</div>
+    <div class="subtitle">统计周期：8月1日 - 8月18日</div>
+    
+    <div class="summary-box">
+        <div class="label">地刷车间整体达成率</div>
+        <div class="value">92.9%</div>
+        <div class="detail">目标: 50,881 | 达成: 47,250 | 欠产: 3,631台</div>
+    </div>
+
+    <div style="background:#e3f2fd;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#1565c0;line-height:1.8">
+        <strong>分类说明：</strong><br>
+        • <strong>内部损失</strong>：人员异常、爬坡损失、换型损失（共74次，2,477台，17.0h，37.9%）<br>
+        • <strong>外部损失</strong>：来料异常、物流配送、设备故障（共32次，1,730台，12.8h，28.5%）<br>
+        • <strong>试制试产/返工/支援</strong>：单独分类统计<br>
+        • <strong>总损失工时</strong>：44.7h（损失工时 = 影响台数 / 目标值 × 1小时）
+    </div>
+
+    <div class="section-title"><span class="num">📊</span>产量达成情况</div>
+    <table>
+        <thead>
+            <tr>
+                <th>排名</th>
+                <th>线体</th>
+                <th>目标</th>
+                <th>达成</th>
+                <th>超产/欠产</th>
+                <th>达成率</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="medal">🥇</span></td>
+                <td>地刷1线（孟飞）</td>
+                <td>11,289</td>
+                <td>11,951</td>
+                <td class="over">+662</td>
+                <td class="rate-high">105.9%</td>
+            </tr>
+            <tr>
+                <td><span class="medal">🥈</span></td>
+                <td>地刷2线（李林）</td>
+                <td>9,145</td>
+                <td>8,945</td>
+                <td class="under">-200</td>
+                <td class="rate-mid">97.8%</td>
+            </tr>
+            <tr>
+                <td><span class="medal">🥉</span></td>
+                <td>水箱1线（金娟）</td>
+                <td>17,584</td>
+                <td>15,295</td>
+                <td class="under">-2,289</td>
+                <td class="rate-low">87.0%</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>充电座（张林）</td>
+                <td>8,743</td>
+                <td>7,523</td>
+                <td class="under">-1,220</td>
+                <td class="rate-low">86.0%</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>水箱2线（马怡军）</td>
+                <td>4,120</td>
+                <td>3,536</td>
+                <td class="under">-584</td>
+                <td class="rate-low">85.8%</td>
+            </tr>
+            <tr class="total-row">
+                <td>-</td>
+                <td>合计</td>
+                <td>50,881</td>
+                <td>47,250</td>
+                <td class="under">-3,631</td>
+                <td class="rate-mid">92.9%</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="container">
+    <div class="section-title"><span class="num">1</span>内外部损失及返工/支援/试制试产占比</div>
+    <table>
+        <thead>
+            <tr>
+                <th>分类</th>
+                <th>次数</th>
+                <th>影响台数</th>
+                <th>损失工时</th>
+                <th>占比</th>
+                <th>可视化</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>内部损失<br><span style="font-size:11px;color:#666">（人员异常、爬坡损失、换型损失）</span></td>
+                <td>74次</td>
+                <td>2,477台</td>
+                <td>17.0h</td>
+                <td class="highlight">37.9%</td>
+                <td><span class="pct-bar" style="width:190px;background:#9c27b0"></span></td>
+            </tr>
+            <tr>
+                <td>外部损失<br><span style="font-size:11px;color:#666">（来料异常、物流配送、设备故障）</span></td>
+                <td>32次</td>
+                <td>1,730台</td>
+                <td>12.8h</td>
+                <td class="highlight">28.5%</td>
+                <td><span class="pct-bar" style="width:143px;background:#f44336"></span></td>
+            </tr>
+            <tr>
+                <td>试制试产</td>
+                <td>16次</td>
+                <td>1,553台</td>
+                <td>11.9h</td>
+                <td class="highlight">26.5%</td>
+                <td><span class="pct-bar" style="width:133px;background:#ff9800"></span></td>
+            </tr>
+            <tr>
+                <td>返工</td>
+                <td>3次</td>
+                <td>278台</td>
+                <td>2.1h</td>
+                <td>4.8%</td>
+                <td><span class="pct-bar" style="width:24px;background:#795548"></span></td>
+            </tr>
+            <tr>
+                <td>支援</td>
+                <td>1次</td>
+                <td>130台</td>
+                <td>1.0h</td>
+                <td>2.2%</td>
+                <td><span class="pct-bar" style="width:11px;background:#607d8b"></span></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="container">
+    <div class="section-title"><span class="num">2</span>异常类别占比（按损失工时排序）</div>
+    <table>
+        <thead>
+            <tr>
+                <th>异常类别</th>
+                <th>次数</th>
+                <th>影响台数</th>
+                <th>损失工时</th>
+                <th>占比</th>
+                <th>可视化</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>试制试产</td>
+                <td>16次</td>
+                <td>1,553台</td>
+                <td>11.9h</td>
+                <td class="highlight">26.5%</td>
+                <td><span class="pct-bar" style="width:133px;background:#ff9800"></span></td>
+            </tr>
+            <tr>
+                <td>来料异常</td>
+                <td>20次</td>
+                <td>1,406台</td>
+                <td>10.4h</td>
+                <td class="highlight">23.2%</td>
+                <td><span class="pct-bar" style="width:116px;background:#f44336"></span></td>
+            </tr>
+            <tr>
+                <td>爬坡损失</td>
+                <td>32次</td>
+                <td>1,009台</td>
+                <td>7.5h</td>
+                <td>16.8%</td>
+                <td><span class="pct-bar" style="width:84px;background:#2196f3"></span></td>
+            </tr>
+            <tr>
+                <td>人员异常</td>
+                <td>26次</td>
+                <td>772台</td>
+                <td>5.6h</td>
+                <td>12.4%</td>
+                <td><span class="pct-bar" style="width:62px;background:#9c27b0"></span></td>
+            </tr>
+            <tr>
+                <td>换型损失</td>
+                <td>16次</td>
+                <td>696台</td>
+                <td>3.9h</td>
+                <td>8.7%</td>
+                <td><span class="pct-bar" style="width:44px;background:#00bcd4"></span></td>
+            </tr>
+            <tr>
+                <td>返工</td>
+                <td>3次</td>
+                <td>278台</td>
+                <td>2.1h</td>
+                <td>4.8%</td>
+                <td><span class="pct-bar" style="width:24px;background:#795548"></span></td>
+            </tr>
+            <tr>
+                <td>设备故障</td>
+                <td>10次</td>
+                <td>178台</td>
+                <td>1.5h</td>
+                <td>3.3%</td>
+                <td><span class="pct-bar" style="width:17px;background:#e91e63"></span></td>
+            </tr>
+            <tr>
+                <td>支援</td>
+                <td>1次</td>
+                <td>130台</td>
+                <td>1.0h</td>
+                <td>2.2%</td>
+                <td><span class="pct-bar" style="width:11px;background:#607d8b"></span></td>
+            </tr>
+            <tr>
+                <td>物流配送</td>
+                <td>2次</td>
+                <td>146台</td>
+                <td>0.9h</td>
+                <td>2.1%</td>
+                <td><span class="pct-bar" style="width:11px;background:#4caf50"></span></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="container">
+    <div class="section-title"><span class="num">3</span>占比前三的异常类别详细分析</div>
+    
+    <div class="detail-card">
+        <div class="card-title">▶ 试制试产（16次，影响1,553台，损失11.9h，占比26.5%）</div>
+        <div class="line-detail">
+            <div class="line-name">水箱1线（金娟）: 8次，损失8.0h</div>
+            <div class="reason-item">• 无备注: 6次，损失6.0h</div>
+            <div class="reason-item">• 停线试产26P: 2次，损失2.0h</div>
+        </div>
+        <div class="line-detail">
+            <div class="line-name">充电座（张林）: 5次，损失2.0h</div>
+            <div class="reason-item">• 试制AT8充电座: 4次，损失1.8h</div>
+            <div class="reason-item">• 换型试制AT8充电座: 1次，损失0.2h</div>
+        </div>
+        <div class="line-detail">
+            <div class="line-name">地刷2线（李林）: 3次，损失1.8h</div>
+            <div class="reason-item">• 试制AT8: 1次，损失1.0h</div>
+            <div class="reason-item">• 试产AT6 Bissell: 2次，损失0.8h</div>
+        </div>
+    </div>
+
+    <div class="detail-card">
+        <div class="card-title">▶ 来料异常（20次，影响1,406台，损失10.4h，占比23.2%）</div>
+        <div class="line-detail">
+            <div class="line-name">水箱1线（金娟）: 11次，损失7.2h</div>
+            <div class="reason-item">• 水箱盖气密测试不过，停线工程工艺分析影响83台: 1次，损失1.0h</div>
+            <div class="reason-item">• 水箱盖气密测试不过，停线工程工艺分析影响110台，支援钢平台: 1次，损失1.0h</div>
+            <div class="reason-item">• 物料异常气密测试不过影响170台: 1次，损失1.0h</div>
+        </div>
+        <div class="line-detail">
+            <div class="line-name">地刷1线（孟飞）: 8次，损失2.5h</div>
+            <div class="reason-item">• 物流未提前叫料: 1次，损失0.7h</div>
+            <div class="reason-item">• 大滚轮未提前叫料: 1次，损失0.6h</div>
+            <div class="reason-item">• 26P未备料: 1次，损失0.4h</div>
+        </div>
+        <div class="line-detail">
+            <div class="line-name">充电座（张林）: 1次，损失0.7h</div>
+            <div class="reason-item">• 上盖来料批量顶白: 1次，损失0.7h</div>
+        </div>
+    </div>
+
+    <div class="detail-card">
+        <div class="card-title">▶ 爬坡损失（32次，影响1,009台，损失7.5h，占比16.8%）</div>
+        <div class="line-detail">
+            <div class="line-name">充电座（张林）: 22次，损失5.6h</div>
+            <div class="reason-item">• 人员操作不熟练: 12次，损失3.1h</div>
+            <div class="reason-item">• 员工操作不熟练: 9次，损失2.2h</div>
+            <div class="reason-item">• 人员不稳定，操作不熟练: 1次，损失0.3h</div>
+        </div>
+        <div class="line-detail">
+            <div class="line-name">水箱2线（马怡军）: 4次，损失0.9h</div>
+            <div class="reason-item">• 新员工岗位适应: 4次，损失0.9h</div>
+        </div>
+        <div class="line-detail">
+            <div class="line-name">地刷1线（孟飞）: 3次，损失0.7h</div>
+            <div class="reason-item">• 无备注: 2次，损失0.7h</div>
+            <div class="reason-item">• 人员变动: 1次，损失0.0h</div>
+        </div>
+        <div class="line-detail">
+            <div class="line-name">地刷2线（李林）: 1次，损失0.1h</div>
+            <div class="reason-item">• 爬坡损失，人员减编，岗位合并: 1次，损失0.1h</div>
+        </div>
+        <div class="line-detail">
+            <div class="line-name">水箱1线（金娟）: 2次，损失0.1h</div>
+            <div class="reason-item">• 无备注: 2次，损失0.1h</div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="section-title"><span class="num">💡</span>改善建议</div>
+    
+    <div class="suggestion-box">
+        <div class="sug-title">1. 试制试产（损失11.9h，占比26.5%）</div>
+        <div class="sug-content">建议提前规划试制计划，避开生产高峰；水箱1线试制26P影响最大（8.0h），需与研发部门协调试制时间安排</div>
+    </div>
+    
+    <div class="suggestion-box">
+        <div class="sug-title">2. 来料异常（损失10.4h，占比23.2%）</div>
+        <div class="sug-content">水箱1线清水箱上盖跟线脱节问题反复出现（7.2h），建议加强供应商来料检验，建立快速反馈机制；地刷1线物流叫料问题需优化备料流程</div>
+    </div>
+    
+    <div class="suggestion-box">
+        <div class="sug-title">3. 爬坡损失（损失7.5h，占比16.8%）</div>
+        <div class="sug-content">充电座线人员操作不熟练问题突出（22次，5.6h），建议加强新员工培训，建立标准化作业流程，缩短爬坡周期</div>
+    </div>
+    
+    <div class="suggestion-box">
+        <div class="sug-title">4. 人员异常（损失5.6h，占比12.4%）</div>
+        <div class="sug-content">主因：缺编、请假、离职员工多，补充不及时。建议预留储备人力，多余放休，不控编控出勤</div>
+    </div>
+</div>
+
+</body>
+</html>
