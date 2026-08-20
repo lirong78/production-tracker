@@ -327,12 +327,20 @@ async function loadLines() {
 // 加载线体-型号关联
 async function loadLineModels() {
   if (!db) return;
-  const { data } = await db.from('production_line_models').select('*').eq('is_active', true).order('sort_order');
+  // 从 model_targets 表读取型号配置
+  const { data } = await db.from('model_targets').select('*');
   if (data) {
     lineModels = {};
+    // 按线体名称分组
+    const lineNameToId = {};
+    lines.forEach(l => { lineNameToId[l.name] = l.id; });
+    
     data.forEach(m => {
-      if (!lineModels[m.line_id]) lineModels[m.line_id] = [];
-      lineModels[m.line_id].push({ model_name: m.model_name, target_value: m.target_value });
+      const lineId = lineNameToId[m.line_name];
+      if (lineId) {
+        if (!lineModels[lineId]) lineModels[lineId] = [];
+        lineModels[lineId].push({ model_name: m.model_name, target_value: m.target_uph });
+      }
     });
   }
 }
