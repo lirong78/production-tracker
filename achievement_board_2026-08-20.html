@@ -47,7 +47,6 @@ body {
     font-size: 15px;
 }
 
-/* 图例 */
 .legend {
     display: flex;
     justify-content: center;
@@ -99,7 +98,6 @@ td {
     border-radius: 6px;
 }
 
-/* 线体名称列 */
 .rank-cell {
     padding: 8px 4px;
     border-radius: 8px;
@@ -124,7 +122,6 @@ td {
 .line-name { font-weight: 800; color: #1a237e; font-size: 16px; }
 .line-leader { font-size: 12px; color: #888; margin-top: 4px; }
 
-/* 时段行标题 */
 .hour-cell {
     background: #f8f9fa;
     font-weight: 700;
@@ -135,7 +132,6 @@ td {
     white-space: nowrap;
 }
 
-/* 单元格 */
 .cell {
     padding: 10px 8px;
     border-radius: 8px;
@@ -152,18 +148,13 @@ td {
 .cell .numbers { font-size: 13px; font-weight: 700; }
 .cell .diff { font-size: 11px; opacity: 0.9; }
 
-/* 达成 - 绿色 */
 .cell-achieved { background: #4caf50; }
-/* 未达成 - 红色 */
 .cell-missed { background: #f44336; }
-/* 灰色 */
 .cell-gray { background: #e0e0e0; color: #666; }
 .cell-gray .model { color: #666; }
 .cell-gray .numbers { color: #666; }
-/* 空 */
 .cell-empty { background: #f5f5f5; color: #ccc; font-size: 12px; }
 
-/* 汇总列 */
 .summary-cell {
     background: #f8f9fa;
     padding: 10px 8px;
@@ -177,7 +168,6 @@ td {
 .rate-low { color: #f44336; }
 .summary-diff { font-size: 12px; font-weight: 600; }
 
-/* 底部汇总卡片 */
 .summary-cards {
     display: flex;
     justify-content: center;
@@ -199,82 +189,6 @@ td {
 .summary-card .card-value.red { color: #f44336; }
 .summary-card .card-value.orange { color: #ff9800; }
 
-/* 线体达成排行榜 */
-.ranking-section {
-    margin-top: 28px;
-}
-.ranking-title {
-    font-size: 22px;
-    font-weight: 800;
-    color: #1a237e;
-    margin-bottom: 16px;
-    text-align: center;
-    letter-spacing: 2px;
-}
-.ranking-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.ranking-item {
-    display: flex;
-    align-items: center;
-    background: #f8f9fa;
-    border-radius: 12px;
-    padding: 14px 20px;
-    gap: 16px;
-}
-.ranking-item.top1 { background: linear-gradient(135deg, #fff8e1, #fff3c4); border: 2px solid #ffd700; }
-.ranking-item.top2 { background: linear-gradient(135deg, #f5f5f5, #e8e8e8); border: 2px solid #c0c0c0; }
-.ranking-item.top3 { background: linear-gradient(135deg, #fbe9e7, #ffccbc); border: 2px solid #cd7f32; }
-.ranking-badge {
-    font-size: 28px;
-    font-weight: 900;
-    min-width: 48px;
-    text-align: center;
-}
-.ranking-badge.gold { color: #ffd700; }
-.ranking-badge.silver { color: #a0a0a0; }
-.ranking-badge.bronze { color: #cd7f32; }
-.ranking-badge.normal { color: #999; font-size: 22px; }
-.ranking-info {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.ranking-line-name {
-    font-size: 18px;
-    font-weight: 700;
-    color: #1a237e;
-}
-.ranking-leader {
-    font-size: 13px;
-    color: #888;
-    margin-left: 8px;
-}
-.ranking-stats {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-}
-.ranking-achieved {
-    font-size: 16px;
-    color: #555;
-}
-.ranking-achieved span { font-weight: 700; color: #333; }
-.ranking-rate {
-    font-size: 28px;
-    font-weight: 900;
-    min-width: 100px;
-    text-align: right;
-}
-.ranking-rate.high { color: #4caf50; }
-.ranking-rate.mid { color: #ff9800; }
-.ranking-rate.low { color: #f44336; }
-.ranking-rate.zero { color: #ccc; }
-
-/* 异常展示区域 */
 .exception-section {
     margin-top: 24px;
     padding: 20px;
@@ -338,7 +252,7 @@ td {
 </head>
 <body>
 <div class="container">
-    <div class="title"><span class="title-icon">📊</span>地刷车间产能达成看板</div>
+    <div class="title"><span class="title-icon">[图表]</span>地刷车间产能达成看板</div>
     <div class="subtitle">
         <span>2026年08月20日</span>
         <span>星期四</span>
@@ -409,7 +323,7 @@ td {
             </tr>
             <tr>
                 <td class="rank-cell" style="background: linear-gradient(135deg, #cd7f32, #e8a87c); color: #fff;"><div class="rank-number">3</div></td>
-                <td class="line-cell"><div class="line-name">地刷1线</div><div class="line-leader">班长：孟飞</div></td>
+                <td class="line-cell"><div class="line-name">地刷 1 线</div><div class="line-leader">班长：孟飞</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
@@ -426,7 +340,7 @@ td {
             </tr>
             <tr>
                 <td class="rank-cell" style="background: #f0f0f0; color: #666;"><div class="rank-number">4</div></td>
-                <td class="line-cell"><div class="line-name">地刷2线</div><div class="line-leader">班长：李林</div></td>
+                <td class="line-cell"><div class="line-name">地刷 2 线</div><div class="line-leader">班长：李林</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
@@ -443,7 +357,24 @@ td {
             </tr>
             <tr>
                 <td class="rank-cell" style="background: #f0f0f0; color: #666;"><div class="rank-number">5</div></td>
-                <td class="line-cell"><div class="line-name">水箱2线</div><div class="line-leader">班长：马怡军</div></td>
+                <td class="line-cell"><div class="line-name">水箱 1 线</div><div class="line-leader">班长：金娟</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td class="summary-cell"><div class="summary-total" style="color:#ccc">-</div></td>
+            </tr>
+            <tr>
+                <td class="rank-cell" style="background: #f0f0f0; color: #666;"><div class="rank-number">6</div></td>
+                <td class="line-cell"><div class="line-name">水箱 2 线</div><div class="line-leader">班长：马怡军</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
@@ -486,8 +417,8 @@ td {
     
     <div class="exception-section">
         <div class="exception-title">
-            <span>⚠️</span>
-            <span>当日主要异常（影响最大的前3类）</span>
+            <span>[警告]</span>
+            <span>当日主要异常（影响最大的前 3 类）</span>
         </div>
         <div class="exception-list">
             <div class="exception-item">
@@ -495,7 +426,7 @@ td {
                     <div class="exception-category">其他</div>
                     <div class="exception-impact">影响 88 台 | 2 次</div>
                 </div>
-                <div class="exception-reasons"><span>人员操作不熟练</span><span>客户审线，耐压不合格，产线停线</span></div>
+                <div class="exception-reasons"><span>客户审线，耐压不合格，产线停线</span><span>人员操作不熟练</span></div>
             </div>
         </div>
     </div>
