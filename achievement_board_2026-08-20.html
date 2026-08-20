@@ -100,6 +100,21 @@ td {
 }
 
 /* 线体名称列 */
+.rank-cell {
+    padding: 12px 8px;
+    border-radius: 8px;
+    text-align: center;
+    vertical-align: middle;
+    font-weight: 900;
+    font-size: 24px;
+    min-width: 60px;
+}
+.rank-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
 .line-cell {
     background: #f8f9fa;
     padding: 12px 8px;
@@ -278,6 +293,7 @@ td {
     <table>
         <thead>
             <tr>
+                <th>排名</th>
                 <th>线体</th>
                 <th>8:00~9:00</th>
                 <th>9:00~10:00</th>
@@ -296,38 +312,7 @@ td {
         </thead>
         <tbody>
             <tr>
-                <td class="line-cell"><div class="line-name">地刷1线</div><div class="line-leader">班长：孟飞</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td class="summary-cell"><div class="summary-total" style="color:#ccc">-</div></td>
-            </tr>
-            <tr>
-                <td class="line-cell"><div class="line-name">地刷2线</div><div class="line-leader">班长：李林</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td><div class="cell cell-empty">未录入</div></td>
-                <td class="summary-cell"><div class="summary-total" style="color:#ccc">-</div></td>
-            </tr>
-            <tr>
+                <td class="rank-cell" style="background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333;"><div class="rank-number">1</div></td>
                 <td class="line-cell"><div class="line-name">水箱1线</div><div class="line-leader">班长：金娟</div></td>
                 <td><div class="cell cell-achieved" ><div class="model">AT2bissell</div><div class="numbers">168/165</div><div class="diff">+3</div></div></td>
                 <td><div class="cell cell-achieved" ><div class="model">AT2bissell</div><div class="numbers">170/165</div><div class="diff">+5</div></div></td>
@@ -344,7 +329,25 @@ td {
                 <td class="summary-cell"><div class="summary-total">1,353</div><div class="summary-target">目标1,325</div><div class="summary-rate rate-high">102%</div><div class="summary-diff rate-high">+28</div></td>
             </tr>
             <tr>
-                <td class="line-cell"><div class="line-name">水箱2线</div><div class="line-leader">班长：马怡军</div></td>
+                <td class="rank-cell" style="background: linear-gradient(135deg, #c0c0c0, #e8e8e8); color: #333;"><div class="rank-number">2</div></td>
+                <td class="line-cell"><div class="line-name">充电座</div><div class="line-leader">班长：张林</div></td>
+                <td><div class="cell cell-missed" ><div class="model">AT2bissell</div><div class="numbers">93/110</div><div class="diff">-17</div></div></td>
+                <td><div class="cell cell-achieved" ><div class="model">AT2bissell</div><div class="numbers">110/110</div><div class="diff">✓</div></div></td>
+                <td><div class="cell cell-missed" ><div class="model">AT2bissell</div><div class="numbers">30/101</div><div class="diff">-71</div></div></td>
+                <td><div class="cell cell-achieved" ><div class="model">AT2bissell</div><div class="numbers">37/37</div><div class="diff">✓</div></div></td>
+                <td><div class="cell cell-achieved" ><div class="model">AT2bissell</div><div class="numbers">110/110</div><div class="diff">✓</div></div></td>
+                <td><div class="cell cell-achieved" ><div class="model">AT2bissell</div><div class="numbers">125/110</div><div class="diff">+15</div></div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td class="summary-cell"><div class="summary-total">505</div><div class="summary-target">目标578</div><div class="summary-rate rate-low">87%</div><div class="summary-diff rate-low">-73</div></td>
+            </tr>
+            <tr>
+                <td class="rank-cell" style="background: linear-gradient(135deg, #cd7f32, #e8a87c); color: #fff;"><div class="rank-number">3</div></td>
+                <td class="line-cell"><div class="line-name">地刷1线</div><div class="line-leader">班长：孟飞</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
@@ -360,20 +363,38 @@ td {
                 <td class="summary-cell"><div class="summary-total" style="color:#ccc">-</div></td>
             </tr>
             <tr>
-                <td class="line-cell"><div class="line-name">充电座</div><div class="line-leader">班长：张林</div></td>
-                <td><div class="cell cell-missed" ><div class="model">AT2bissell</div><div class="numbers">93/110</div><div class="diff">-17</div></div></td>
-                <td><div class="cell cell-achieved" ><div class="model">AT2bissell</div><div class="numbers">110/110</div><div class="diff">✓</div></div></td>
-                <td><div class="cell cell-missed" ><div class="model">AT2bissell</div><div class="numbers">30/101</div><div class="diff">-71</div></div></td>
-                <td><div class="cell cell-achieved" ><div class="model">AT2bissell</div><div class="numbers">37/37</div><div class="diff">✓</div></div></td>
-                <td><div class="cell cell-achieved" ><div class="model">AT2bissell</div><div class="numbers">110/110</div><div class="diff">✓</div></div></td>
-                <td><div class="cell cell-achieved" ><div class="model">AT2bissell</div><div class="numbers">125/110</div><div class="diff">+15</div></div></td>
+                <td class="rank-cell" style="background: #f0f0f0; color: #666;"><div class="rank-number">4</div></td>
+                <td class="line-cell"><div class="line-name">地刷2线</div><div class="line-leader">班长：李林</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
                 <td><div class="cell cell-empty">未录入</div></td>
-                <td class="summary-cell"><div class="summary-total">505</div><div class="summary-target">目标578</div><div class="summary-rate rate-low">87%</div><div class="summary-diff rate-low">-73</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td class="summary-cell"><div class="summary-total" style="color:#ccc">-</div></td>
+            </tr>
+            <tr>
+                <td class="rank-cell" style="background: #f0f0f0; color: #666;"><div class="rank-number">5</div></td>
+                <td class="line-cell"><div class="line-name">水箱2线</div><div class="line-leader">班长：马怡军</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td><div class="cell cell-empty">未录入</div></td>
+                <td class="summary-cell"><div class="summary-total" style="color:#ccc">-</div></td>
             </tr>
         </tbody>
     </table>
@@ -398,77 +419,6 @@ td {
         <div class="summary-card">
             <div class="card-label">达成/未达成时段</div>
             <div class="card-value"><span style="color:#4caf50">13</span> / <span style="color:#f44336">2</span></div>
-        </div>
-    </div>
-    
-    <div class="ranking-section">
-        <div class="ranking-title">🏆 线体达成排行榜</div>
-        <div class="ranking-list">
-            <div class="ranking-item top1">
-                <div class="ranking-badge gold">🥇</div>
-                <div class="ranking-info">
-                    <div>
-                        <span class="ranking-line-name">水箱1线</span>
-                        <span class="ranking-leader">（金娟）</span>
-                    </div>
-                    <div class="ranking-stats">
-                        <div class="ranking-achieved">达成 <span>1,353</span> / 目标 <span>1,325</span></div>
-                        <div class="ranking-rate high">102.1%</div>
-                    </div>
-                </div>
-            </div>
-            <div class="ranking-item top2">
-                <div class="ranking-badge silver">🥈</div>
-                <div class="ranking-info">
-                    <div>
-                        <span class="ranking-line-name">充电座</span>
-                        <span class="ranking-leader">（张林）</span>
-                    </div>
-                    <div class="ranking-stats">
-                        <div class="ranking-achieved">达成 <span>505</span> / 目标 <span>578</span></div>
-                        <div class="ranking-rate low">87.4%</div>
-                    </div>
-                </div>
-            </div>
-            <div class="ranking-item top3">
-                <div class="ranking-badge bronze">🥉</div>
-                <div class="ranking-info">
-                    <div>
-                        <span class="ranking-line-name">地刷1线</span>
-                        <span class="ranking-leader">（孟飞）</span>
-                    </div>
-                    <div class="ranking-stats">
-                        <div class="ranking-achieved">达成 <span>0</span> / 目标 <span>0</span></div>
-                        <div class="ranking-rate zero">0.0%</div>
-                    </div>
-                </div>
-            </div>
-            <div class="ranking-item ">
-                <div class="ranking-badge normal">4</div>
-                <div class="ranking-info">
-                    <div>
-                        <span class="ranking-line-name">地刷2线</span>
-                        <span class="ranking-leader">（李林）</span>
-                    </div>
-                    <div class="ranking-stats">
-                        <div class="ranking-achieved">达成 <span>0</span> / 目标 <span>0</span></div>
-                        <div class="ranking-rate zero">0.0%</div>
-                    </div>
-                </div>
-            </div>
-            <div class="ranking-item ">
-                <div class="ranking-badge normal">5</div>
-                <div class="ranking-info">
-                    <div>
-                        <span class="ranking-line-name">水箱2线</span>
-                        <span class="ranking-leader">（马怡军）</span>
-                    </div>
-                    <div class="ranking-stats">
-                        <div class="ranking-achieved">达成 <span>0</span> / 目标 <span>0</span></div>
-                        <div class="ranking-rate zero">0.0%</div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
