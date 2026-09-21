@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生产喜报展示</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 {
+    text-align: center;
+    color: white;
+    margin-bottom: 30px;
+    font-size: 32px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .workshop-section {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  }
+  .workshop-title {
+    font-size: 22px;
+    color: #333;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid #667eea;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .workshop-title::before {
+    content: '🏭';
+    font-size: 28px;
+  }
+  .line-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  .line-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    padding: 20px;
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .line-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    border-color: #667eea;
+  }
+  .line-card.no-data {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .line-card.no-data:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: #e0e0e0;
+  }
+  .line-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .line-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+  }
+  .line-date {
+    font-size: 12px;
+    color: #666;
+    background: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .breakthrough-info {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .breakthrough-type {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 4px;
+  }
+  .breakthrough-value {
+    font-size: 36px;
+    font-weight: 900;
+    color: #667eea;
+    line-height: 1;
+  }
+  .breakthrough-unit {
+    font-size: 16px;
+    color: #666;
+    margin-left: 4px;
+  }
+  .team-info {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.6;
+  }
+  .team-info span {
+    display: inline-block;
+    margin-right: 12px;
+  }
+  .no-data-text {
+    text-align: center;
+    color: #999;
+    padding: 30px;
+    font-size: 14px;
+  }
+  .btn-generate {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: all 0.3s;
+  }
+  .btn-generate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102,126,234,0.4);
+  }
+  .btn-generate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: white;
+    font-size: 16px;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 60px;
+    color: white;
+  }
+  .empty-state h2 {
+    font-size: 24px;
+    margin-bottom: 12px;
+  }
+  .empty-state p {
+    font-size: 16px;
+    opacity: 0.8;
+  }
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal.show {
+    display: flex;
+  }
+  .modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #333;
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: #999;
+  }
+  .modal-close:hover {
+    color: #333;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎉 生产喜报展示</h1>
+  <div id="content">
+    <div class="loading">加载中...</div>
+  </div>
+</div>
+
+<!-- 喜报详情弹窗 -->
+<div id="modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">喜报详情</div>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://jtcoqlpxdubcmdpawyiu.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_g9LTQJUkOYi2F0AU8wmPbw_Gb-kxdI_';
+  
+  // 线体配置
+  const LINE_CONFIG = {
+    '部品分厂': ['地刷1线', '地刷2线', '充电座线', '水箱1线', '水箱2线'],
+    '地刷车间': ['地刷1线', '地刷2线'],
+    '水箱车间': ['水箱1线', '水箱2线', '充电座线']
+  };
+  
+  async function loadData() {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/production_celebrations?order=breakthrough_date.desc`, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('加载失败');
+      
+      const data = await response.json();
+      renderContent(data);
+    } catch (error) {
+      document.getElementById('content').innerHTML = '<div class="empty-state"><h2>加载失败</h2><p>请刷新页面重试</p></div>';
+      console.error(error);
+    }
+  }
+  
+  function renderContent(data) {
+    const content = document.getElementById('content');
+    
+    if (data.length === 0) {
+      content.innerHTML = '<div class="empty-state"><h2>暂无喜报</h2><p>快去录入第一条喜报吧！</p></div>';
+      return;
+    }
+    
+    // 按车间分组
+    const workshops = {};
+    data.forEach(item => {
+      if (!workshops[item.workshop]) {
+        workshops[item.workshop] = {};
+      }
+      // 每条线体只保留最新一条
+      if (!workshops[item.workshop][item.line_name]) {
+        workshops[item.workshop][item.line_name] = item;
+      }
+    });
+    
+    let html = '';
+    
+    Object.keys(workshops).forEach(workshop => {
+      html += `
+        <div class="workshop-section">
+          <div class="workshop-title">${workshop}</div>
+          <div class="line-grid">
+      `;
+      
+      const lines = workshops[workshop];
+      Object.keys(lines).forEach(lineName => {
+        const item = lines[lineName];
+        const date = new Date(item.breakthrough_date).toLocaleDateString('zh-CN');
+        
+        html += `
+          <div class="line-card" onclick="showDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+            <div class="line-header">
+              <div class="line-name">${lineName}</div>
+              <div class="line-date">${date}</div>
+            </div>
+            <div class="breakthrough-info">
+              <div class="breakthrough-type">${item.breakthrough_type}突破</div>
+              <div class="breakthrough-value">${item.breakthrough_value}<span class="breakthrough-unit">台</span></div>
+            </div>
+            <div class="team-info">
+              ${item.model_name ? `<span>型号：${item.model_name}</span>` : ''}
+              ${item.leader ? `<span>班长：${item.leader}</span>` : ''}
+              ${item.engineer ? `<span>工艺：${item.engineer}</span>` : ''}
+              ${item.inspector ? `<span>巡检：${item.inspector}</span>` : ''}
+            </div>
+            <button class="btn-generate" onclick="generatePoster(event, ${JSON.stringify(item).replace(/"/g, '&quot;')})">生成喜报海报</button>
+          </div>
+        `;
+      });
+      
+      html += `
+          </div>
+        </div>
+      `;
+    });
+    
+    content.innerHTML = html;
+  }
+  
+  function showDetail(item) {
+    const modal = document.getElementById('modal');
+    const modalBody = document.getElementById('modalBody');
+    const date = new Date(item.breakthrough_date).toLocaleDateString('zh-CN');
+    
+    modalBody.innerHTML = `
+      <div style="text-align:center;padding:20px;">
+        <h2 style="font-size:24px;color:#667eea;margin-bottom:16px;">🎉 ${item.breakthrough_type}突破！</h2>
+        <div style="font-size:48px;font-weight:900;color:#667eea;margin:20px 0;">${item.breakthrough_value} 台</div>
+        <div style="color:#666;margin-bottom:20px;">${item.workshop} - ${item.line_name}</div>
+        <div style="background:#f8f9fa;padding:16px;border-radius:8px;text-align:left;">
+          <div style="margin-bottom:8px;"><strong>日期：</strong>${date}</div>
+          ${item.model_name ? `<div style="margin-bottom:8px;"><strong>型号：</strong>${item.model_name}</div>` : ''}
+          ${item.leader ? `<div style="margin-bottom:8px;"><strong>班长：</strong>${item.leader}</div>` : ''}
+          ${item.engineer ? `<div style="margin-bottom:8px;"><strong>工艺：</strong>${item.engineer}</div>` : ''}
+          ${item.inspector ? `<div style="margin-bottom:8px;"><strong>巡检：</strong>${item.inspector}</div>` : ''}
+          ${item.notes ? `<div style="margin-bottom:8px;"><strong>备注：</strong>${item.notes}</div>` : ''}
+        </div>
+        <button class="btn-generate" style="margin-top:20px;" onclick="generatePoster(event, ${JSON.stringify(item).replace(/"/g, '&quot;')})">生成喜报海报</button>
+      </div>
+    `;
+    
+    modal.classList.add('show');
+  }
+  
+  function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+  }
+  
+  function generatePoster(event, item) {
+    event.stopPropagation();
+    
+    // 生成喜报HTML并打开新窗口
+    const posterHtml = generatePosterHtml(item);
+    const blob = new Blob([posterHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  }
+  
+  function generatePosterHtml(item) {
+    const date = new Date(item.breakthrough_date).toLocaleDateString('zh-CN');
+    
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>喜报 - ${item.line_name}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    font-family: 'Microsoft YaHei', 'PingFang SC', 'SimHei', sans-serif;
+    background: #b91c1c;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 0;
+  }
+  .poster {
+    width: 100%;
+    max-width: 750px;
+    margin: 0 auto;
+    background: linear-gradient(180deg, #dc2626 0%, #b91c1c 30%, #991b1b 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .top-bar {
+    background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+    height: 6px;
+  }
+  .firework {
+    position: absolute;
+    font-size: 50px;
+    opacity: 0.5;
+    z-index: 0;
+  }
+  .firework.f1 { top: 20px; left: 20px; }
+  .firework.f2 { top: 20px; right: 20px; }
+  .firework.f3 { bottom: 100px; left: 20px; }
+  .firework.f4 { bottom: 100px; right: 20px; }
+  .content {
+    padding: 40px 50px 50px;
+    position: relative;
+    z-index: 1;
+  }
+  .stars {
+    text-align: center;
+    font-size: 28px;
+    color: #fbbf24;
+    letter-spacing: 12px;
+    margin-bottom: 16px;
+  }
+  .title {
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .title h1 {
+    font-size: 72px;
+    color: #fbbf24;
+    text-shadow: 0 0 30px rgba(251,191,36,0.6), 0 4px 12px rgba(0,0,0,0.4), 3px 3px 0 #92400e;
+    font-weight: 900;
+    letter-spacing: 30px;
+    padding-left: 30px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 20px;
+    color: #fde68a;
+    letter-spacing: 6px;
+    margin-bottom: 30px;
+  }
+  .divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #fbbf24, transparent);
+    margin: 0 60px 30px;
+  }
+  .highlight-section {
+    background: linear-gradient(135deg, rgba(251,191,36,0.2) 0%, rgba(251,191,36,0.08) 100%);
+    border: 2px solid #fbbf24;
+    border-radius: 16px;
+    padding: 30px 20px;
+    margin-bottom: 28px;
+    position: relative;
+  }
+  .highlight-section::before {
+    content: '🏆';
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 44px;
+    background: #b91c1c;
+    padding: 0 16px;
+  }
+  .data-item {
+    text-align: center;
+    padding: 20px 10px;
+  }
+  .data-item .label {
+    font-size: 18px;
+    color: #fde68a;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+  }
+  .data-item .value {
+    font-size: 64px;
+    font-weight: 900;
+    color: #fbbf24;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    line-height: 1;
+  }
+  .data-item .unit {
+    font-size: 16px;
+    color: #fca5a5;
+    margin-top: 6px;
+  }
+  .info-section {
+    background: rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 20px 28px;
+    margin-bottom: 28px;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px dashed rgba(251,191,36,0.3);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { color: #fde68a; font-size: 18px; }
+  .info-value { color: #fff; font-size: 20px; font-weight: 700; }
+  .team-section { text-align: center; margin-bottom: 28px; }
+  .team-title { font-size: 20px; color: #fde68a; margin-bottom: 20px; letter-spacing: 8px; }
+  .team-grid { display: flex; justify-content: center; gap: 50px; }
+  .team-member { text-align: center; }
+  .team-member .avatar {
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    color: #92400e;
+    font-weight: 900;
+    margin: 0 auto 10px;
+    box-shadow: 0 4px 16px rgba(251,191,36,0.5);
+    border: 3px solid rgba(255,255,255,0.3);
+  }
+  .team-member .name { color: #fff; font-size: 20px; font-weight: 700; }
+  .team-member .role { color: #fca5a5; font-size: 14px; margin-top: 2px; }
+  .footer-section { text-align: center; padding-top: 10px; }
+  .footer-section .congrats { font-size: 28px; color: #fbbf24; letter-spacing: 12px; margin-bottom: 12px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+  .footer-section .date { font-size: 16px; color: #fde68a; letter-spacing: 2px; }
+  .footer-section .dept { font-size: 14px; color: #fca5a5; margin-top: 4px; }
+  .bottom-bar { background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24); height: 6px; }
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="top-bar"></div>
+  <div class="firework f1">🎆</div>
+  <div class="firework f2">🎇</div>
+  <div class="firework f3">✨</div>
+  <div class="firework f4">🎉</div>
+  <div class="content">
+    <div class="stars">★ ★ ★ ★ ★</div>
+    <div class="title"><h1>喜 报</h1></div>
+    <div class="subtitle">热烈祝贺${item.line_name}再创佳绩</div>
+    <div class="divider"></div>
+    <div class="highlight-section">
+      <div class="data-item">
+        <div class="label"> ${item.breakthrough_type}突破</div>
+        <div class="value">${item.breakthrough_value}</div>
+        <div class="unit">台</div>
+      </div>
+    </div>
+    <div class="info-section">
+      <div class="info-row">
+        <span class="info-label"> 生产线体</span>
+        <span class="info-value">${item.line_name}</span>
+      </div>
+      ${item.model_name ? `
+      <div class="info-row">
+        <span class="info-label"> 生产型号</span>
+        <span class="info-value">${item.model_name}</span>
+      </div>
+      ` : ''}
+    </div>
+    ${item.leader || item.engineer || item.inspector ? `
+    <div class="team-section">
+      <div class="team-title">优秀团队</div>
+      <div class="team-grid">
+        ${item.leader ? `
+        <div class="team-member">
+          <div class="avatar">${item.leader[0]}</div>
+          <div class="name">${item.leader}</div>
+          <div class="role">班长</div>
+        </div>
+        ` : ''}
+        ${item.engineer ? `
+        <div class="team-member">
+          <div class="avatar">${item.engineer[0]}</div>
+          <div class="name">${item.engineer}</div>
+          <div class="role">工艺</div>
+        </div>
+        ` : ''}
+        ${item.inspector ? `
+        <div class="team-member">
+          <div class="avatar">${item.inspector[0]}</div>
+          <div class="name">${item.inspector}</div>
+          <div class="role">巡检</div>
+        </div>
+        ` : ''}
+      </div>
+    </div>
+    ` : ''}
+    <div class="footer-section">
+      <div class="congrats">再接再厉 再创辉煌</div>
+      <div class="date">${date}</div>
+      <div class="dept">${item.workshop}</div>
+    </div>
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+</body>
+</html>`;
+  }
+  
+  // 点击弹窗外部关闭
+  document.getElementById('modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeModal();
+    }
+  });
+  
+  // 页面加载
+  loadData();
+</script>
+</body>
+</html>
