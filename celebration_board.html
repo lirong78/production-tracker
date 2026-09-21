@@ -245,7 +245,8 @@
   
   async function loadData() {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/production_celebrations?order=breakthrough_date.desc`, {
+      // 只查询日产类型的突破记录
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/production_celebrations?breakthrough_type=eq.日产&order=breakthrough_date.desc`, {
         headers: {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`
