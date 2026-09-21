@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生产喜报录入</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .container {
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 28px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+    font-size: 14px;
+  }
+  .form-group {
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    margin-bottom: 6px;
+    color: #555;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 15px;
+    transition: all 0.3s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+    margin-top: 10px;
+  }
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102,126,234,0.4);
+  }
+  .btn:active {
+    transform: translateY(0);
+  }
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .message {
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 16px;
+    text-align: center;
+    font-size: 14px;
+    display: none;
+  }
+  .message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+  .message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+  .history-section {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid #f0f0f0;
+  }
+  .history-section h2 {
+    font-size: 20px;
+    color: #333;
+    margin-bottom: 16px;
+  }
+  .history-item {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border-left: 4px solid #667eea;
+  }
+  .history-item .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .history-item .title {
+    font-weight: 600;
+    color: #333;
+    font-size: 15px;
+  }
+  .history-item .date {
+    color: #666;
+    font-size: 13px;
+  }
+  .history-item .details {
+    color: #666;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .history-item .value {
+    color: #667eea;
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .no-data {
+    text-align: center;
+    color: #999;
+    padding: 40px;
+    font-size: 14px;
+  }
+  .loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎉 生产喜报录入</h1>
+  <p class="subtitle">记录每一次突破，见证每一份荣耀</p>
+  
+  <form id="celebrationForm">
+    <div class="form-group">
+      <label>车间 *</label>
+      <select id="workshop" required>
+        <option value="">请选择车间</option>
+        <option value="部品分厂">部品分厂</option>
+        <option value="地刷车间">地刷车间</option>
+        <option value="水箱车间">水箱车间</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>线体 *</label>
+      <select id="lineName" required>
+        <option value="">请选择线体</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>型号</label>
+      <input type="text" id="modelName" placeholder="如：AT2bissell清水箱">
+    </div>
+    
+    <div class="row">
+      <div class="form-group">
+        <label>班长</label>
+        <input type="text" id="leader" placeholder="班长姓名">
+      </div>
+      <div class="form-group">
+        <label>工艺</label>
+        <input type="text" id="engineer" placeholder="工艺姓名">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label>巡检</label>
+      <input type="text" id="inspector" placeholder="巡检姓名">
+    </div>
+    
+    <div class="row">
+      <div class="form-group">
+        <label>突破项目 *</label>
+        <select id="breakthroughType" required>
+          <option value="">请选择</option>
+          <option value="线小时">线小时</option>
+          <option value="日产">日产</option>
+          <option value="周产">周产</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>突破数值 *</label>
+        <input type="number" id="breakthroughValue" placeholder="如：200" required min="1">
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label>突破日期 *</label>
+      <input type="date" id="breakthroughDate" required>
+    </div>
+    
+    <div class="form-group">
+      <label>备注</label>
+      <textarea id="notes" rows="3" placeholder="其他说明（选填）"></textarea>
+    </div>
+    
+    <button type="submit" class="btn" id="submitBtn">提交喜报</button>
+    
+    <div id="message" class="message"></div>
+  </form>
+  
+  <div class="history-section">
+    <h2>📊 历史喜报</h2>
+    <div id="historyList">
+      <div class="loading">加载中...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://jtcoqlpxdubcmdpawyiu.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_g9LTQJUkOYi2F0AU8wmPbw_Gb-kxdI_';
+  
+  // 线体配置
+  const LINE_CONFIG = {
+    '部品分厂': ['地刷1线', '地刷2线', '充电座线', '水箱1线', '水箱2线'],
+    '地刷车间': ['地刷1线', '地刷2线'],
+    '水箱车间': ['水箱1线', '水箱2线', '充电座线']
+  };
+  
+  // 车间联动
+  document.getElementById('workshop').addEventListener('change', function() {
+    const workshop = this.value;
+    const lineSelect = document.getElementById('lineName');
+    lineSelect.innerHTML = '<option value="">请选择线体</option>';
+    
+    if (workshop && LINE_CONFIG[workshop]) {
+      LINE_CONFIG[workshop].forEach(line => {
+        const option = document.createElement('option');
+        option.value = line;
+        option.textContent = line;
+        lineSelect.appendChild(option);
+      });
+    }
+  });
+  
+  // 设置默认日期为今天
+  document.getElementById('breakthroughDate').valueAsDate = new Date();
+  
+  // 加载历史喜报
+  async function loadHistory() {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/production_celebrations?order=breakthrough_date.desc&limit=10`, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('加载失败');
+      
+      const data = await response.json();
+      const historyList = document.getElementById('historyList');
+      
+      if (data.length === 0) {
+        historyList.innerHTML = '<div class="no-data">暂无喜报记录</div>';
+        return;
+      }
+      
+      historyList.innerHTML = data.map(item => `
+        <div class="history-item">
+          <div class="header">
+            <span class="title">${item.workshop} - ${item.line_name}</span>
+            <span class="date">${item.breakthrough_date}</span>
+          </div>
+          <div class="details">
+            <span class="value">${item.breakthrough_type}突破 ${item.breakthrough_value}</span>
+            ${item.model_name ? ` | 型号：${item.model_name}` : ''}
+            ${item.leader ? ` | 班长：${item.leader}` : ''}
+            ${item.engineer ? ` | 工艺：${item.engineer}` : ''}
+            ${item.inspector ? ` | 巡检：${item.inspector}` : ''}
+            ${item.notes ? `<br>备注：${item.notes}` : ''}
+          </div>
+        </div>
+      `).join('');
+    } catch (error) {
+      document.getElementById('historyList').innerHTML = '<div class="no-data">加载失败，请刷新重试</div>';
+      console.error(error);
+    }
+  }
+  
+  // 提交表单
+  document.getElementById('celebrationForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const message = document.getElementById('message');
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = '提交中...';
+    message.style.display = 'none';
+    
+    const formData = {
+      workshop: document.getElementById('workshop').value,
+      line_name: document.getElementById('lineName').value,
+      model_name: document.getElementById('modelName').value || null,
+      leader: document.getElementById('leader').value || null,
+      engineer: document.getElementById('engineer').value || null,
+      inspector: document.getElementById('inspector').value || null,
+      breakthrough_type: document.getElementById('breakthroughType').value,
+      breakthrough_value: parseFloat(document.getElementById('breakthroughValue').value),
+      breakthrough_date: document.getElementById('breakthroughDate').value,
+      notes: document.getElementById('notes').value || null
+    };
+    
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/production_celebrations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      if (!response.ok) throw new Error('提交失败');
+      
+      message.className = 'message success';
+      message.textContent = '✅ 喜报提交成功！';
+      message.style.display = 'block';
+      
+      // 重置表单
+      this.reset();
+      document.getElementById('breakthroughDate').valueAsDate = new Date();
+      
+      // 重新加载历史
+      loadHistory();
+      
+      // 3秒后隐藏消息
+      setTimeout(() => {
+        message.style.display = 'none';
+      }, 3000);
+      
+    } catch (error) {
+      message.className = 'message error';
+      message.textContent = '❌ 提交失败：' + error.message;
+      message.style.display = 'block';
+      console.error(error);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '提交喜报';
+    }
+  });
+  
+  // 页面加载时加载历史
+  loadHistory();
+</script>
+</body>
+</html>
