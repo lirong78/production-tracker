@@ -1,0 +1,2652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电子车间产线小时产出录入系统</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: #f0f2f5; color: #333; }
+.container { max-width: 1200px; margin: 0 auto; padding: 15px; }
+
+/* 头部 */
+.header { background: linear-gradient(135deg, #1e3a5f, #2563eb); border-radius: 12px; padding: 20px; color: white; text-align: center; margin-bottom: 20px; }
+.header h1 { font-size: 24px; margin-bottom: 5px; }
+.header .subtitle { font-size: 14px; opacity: 0.85; }
+
+/* 标签页 */
+.tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab { padding: 10px 20px; background: white; border-radius: 8px; cursor: pointer; font-size: 14px; border: 2px solid transparent; }
+.tab.active { background: #2563eb; color: white; }
+
+/* 卡片 */
+.card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.card h3 { font-size: 16px; color: #1e3a5f; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #2563eb; }
+
+/* 表单 */
+.form-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+.form-group { flex: 1; min-width: 150px; }
+.form-group label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 5px; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; }
+.form-group input:focus, .form-group select:focus { outline: none; border-color: #2563eb; }
+
+/* 按钮 */
+.btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-success { background: #10b981; color: white; }
+.btn-danger { background: #ef4444; color: white; }
+.btn-warning { background: #f59e0b; color: white; }
+
+/* 表格 */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #2563eb; color: white; padding: 10px 8px; text-align: left; }
+td { padding: 8px; border-bottom: 1px solid #e5e7eb; }
+tr:nth-child(even) { background: #f9fafb; }
+
+/* 达成率颜色 */
+.rate-green { color: #065f46; font-weight: bold; }
+.rate-red { color: #991b1b; font-weight: bold; }
+
+/* 隐藏 */
+.hidden { display: none; }
+
+/* 录入行 - 卡片式布局 */
+.input-row { background: #f8fafc; border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; border: 1px solid #e5e7eb; }
+.time-slot-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.time-slot-header select { font-size: 18px; font-weight: bold; color: #1e3a5f; border: none; background: transparent; padding: 4px 0; cursor: pointer; }
+.input-row .form-row { display: flex; gap: 15px; margin-bottom: 12px; flex-wrap: wrap; }
+.input-row .form-row:last-child { margin-bottom: 0; }
+.input-row .form-group { flex: 1; min-width: 120px; }
+.input-row .form-group label { display: block; font-size: 12px; color: #6b7280; margin-bottom: 5px; }
+.input-row .form-group input, .input-row .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: white; }
+.input-row .form-group input:focus, .input-row .form-group select:focus { outline: none; border-color: #2563eb; }
+
+/* 标签 */
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+.tag-shift-day { background: #fef3c7; color: #92400e; }
+.tag-shift-night { background: #ede9fe; color: #5b21b6; }
+
+/* 统计卡片 */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; text-align: center; }
+.stat-card .value { font-size: 24px; font-weight: bold; color: #1e3a5f; }
+.stat-card .label { font-size: 12px; color: #6b7280; margin-top: 5px; }
+
+/* 分页 */
+.pagination { display: flex; justify-content: center; gap: 5px; margin-top: 15px; }
+.pagination button { padding: 8px 12px; border: 1px solid #e5e7eb; background: white; border-radius: 6px; cursor: pointer; }
+.pagination button.active { background: #2563eb; color: white; border-color: #2563eb; }
+
+/* 响应式 - 移动端优化 */
+@media (max-width: 768px) {
+    .container {
+        padding: 8px;
+    }
+    
+    .header {
+        padding: 15px 10px;
+        margin-bottom: 12px;
+    }
+    
+    .header h1 {
+        font-size: 18px;
+        line-height: 1.3;
+    }
+    
+    .header .subtitle {
+        font-size: 13px;
+    }
+    
+    /* 标签页 - 横向滚动 */
+    .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 5px;
+    }
+    
+    .tab {
+        padding: 10px 16px;
+        font-size: 14px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    
+    /* 卡片 */
+    .card {
+        padding: 12px;
+        margin-bottom: 12px;
+        border-radius: 10px;
+    }
+    
+    .card h3 {
+        font-size: 15px;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+    }
+    
+    /* 表单 - 全宽显示 */
+    .form-row {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .form-group {
+        width: 100%;
+        min-width: 100%;
+    }
+    
+    .form-group label {
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 16px;
+        padding: 12px;
+        width: 100%;
+    }
+    
+    /* 录入行 - 移动端优化 */
+    .input-row {
+        padding: 12px;
+        margin-bottom: 10px;
+        border-radius: 10px;
+    }
+    
+    .input-row .form-row {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .input-row .form-group {
+        width: 100%;
+        min-width: 100%;
+        flex: 1 1 100%;
+    }
+    
+    .input-row .form-group label {
+        font-size: 13px;
+    }
+    
+    .input-row .form-group input,
+    .input-row .form-group select {
+        font-size: 16px;
+        padding: 12px;
+        width: 100%;
+    }
+    
+    /* 时段标题 */
+    .time-slot-header {
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+    
+    .time-slot-header select {
+        font-size: 16px;
+    }
+    
+    /* 已保存行 */
+    .saved-header {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    .saved-header span {
+        font-size: 13px;
+    }
+    
+    .saved-detail {
+        padding: 8px 0;
+    }
+    
+    /* 按钮 */
+    .btn {
+        width: 100%;
+        padding: 14px;
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    
+    /* 当班累计统计 */
+    #shift-summary {
+        padding: 12px 10px;
+        margin-bottom: 12px;
+    }
+    
+    #shift-summary > div {
+        flex: 1;
+    }
+    
+    #shift-summary .value {
+        font-size: 20px;
+    }
+    
+    #shift-summary .label {
+        font-size: 11px;
+    }
+    
+    /* 统计卡片 */
+    .stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    
+    .stat-card {
+        padding: 12px 8px;
+    }
+    
+    .stat-card .value {
+        font-size: 20px;
+    }
+    
+    .stat-card .label {
+        font-size: 11px;
+    }
+    
+    /* 表格 */
+    table {
+        font-size: 12px;
+    }
+    
+    th, td {
+        padding: 8px 4px;
+    }
+    
+    /* 分页 */
+    .pagination {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .pagination button {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+    
+    /* 子时段行 */
+    .sub-slot-row .form-row {
+        margin-left: 0;
+    }
+    
+    .sub-slot-row .time-slot-header {
+        margin-left: 0;
+        font-size: 13px;
+    }
+    
+    /* 搜索框 */
+    .search-box input {
+        font-size: 16px;
+        padding: 12px;
+    }
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 375px) {
+    .header h1 {
+        font-size: 16px;
+    }
+    
+    .tab {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+    
+    .card {
+        padding: 10px;
+    }
+    
+    .input-row {
+        padding: 10px;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .input-row .form-group input,
+    .input-row .form-group select {
+        font-size: 15px;
+        padding: 10px;
+    }
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📋 电子车间产线小时产出录入系统</h1>
+        <div class="subtitle" id="header-date"></div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('input')">📝 数据录入</div>
+        <div class="tab" onclick="switchTab('dashboard')">📊 实时看板</div>
+        <div class="tab" onclick="switchTab('admin')">⚙️ 管理后台</div>
+    </div>
+
+    <!-- 录入页面 -->
+    <div id="input-page">
+        <div class="card">
+            <h3>基本信息</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>日期</label>
+                    <input type="date" id="record-date" onchange="updateShift()">
+                </div>
+                <div class="form-group">
+                    <label>班次</label>
+                    <select id="shift" onchange="updateTimeSlots()">
+                        <option value="白班">白班 (8:00-20:00)</option>
+                        <option value="夜班">夜班 (20:00-8:00)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>线体</label>
+                    <select id="line-name" onchange="updateTimeSlots()">
+                        <option value="">请选择线体</option>
+                        <option value="SMT1线">SMT1线</option>
+                        <option value="SMT2线">SMT2线</option>
+                        <option value="SMT3线">SMT3线</option>
+                        <option value="SMT4线">SMT4线</option>
+                        <option value="SMT5线">SMT5线</option>
+                        <option value="SMT6线">SMT6线</option>
+                        <option value="SMT7线">SMT7线</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:none;display:flex;align-items:flex-end;padding-bottom:8px;">
+                    <button type="button" onclick="updateTimeSlots()" style="background:#2563eb;color:white;border:none;padding:6px 12px;border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap;">🔄 刷新</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card hidden" id="input-card">
+            <h3>小时产出录入</h3>
+            <!-- 当班累计统计 -->
+            <div id="shift-summary" style="background:#2563eb;border-radius:10px;padding:16px 20px;margin-bottom:16px;display:flex;justify-content:space-around;color:white;">
+                <div style="text-align:center;">
+                    <div style="font-size:12px;opacity:0.85;margin-bottom:4px;">当班累计目标</div>
+                    <div id="summary-target" style="font-size:24px;font-weight:bold;">0</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:12px;opacity:0.85;margin-bottom:4px;">当班累计达成</div>
+                    <div id="summary-achieved" style="font-size:24px;font-weight:bold;">0</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:12px;opacity:0.85;margin-bottom:4px;">当班达成率</div>
+                    <div id="summary-rate" style="font-size:24px;font-weight:bold;">0%</div>
+                </div>
+            </div>
+            <div id="input-rows"></div>
+            <div style="text-align:center;margin-top:20px;">
+                <button class="btn btn-success" onclick="saveAllRecords()" style="width:300px;padding:14px 20px;font-size:16px;">💾 保存数据</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 看板页面 -->
+    <div id="dashboard-page" class="hidden">
+        <div class="card">
+            <h3>选择日期查看看板</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>日期</label>
+                    <input type="date" id="dashboard-date" onchange="loadDashboard()">
+                </div>
+                <div class="form-group">
+                    <label>班次</label>
+                    <select id="dashboard-shift" onchange="loadDashboard()">
+                        <option value="">全部</option>
+                        <option value="白班">白班</option>
+                        <option value="夜班">夜班</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>线体</label>
+                    <select id="dashboard-line" onchange="loadDashboard()">
+                        <option value="">全部</option>
+                        <option value="SMT1线">SMT1线</option>
+                        <option value="SMT2线">SMT2线</option>
+                        <option value="SMT3线">SMT3线</option>
+                        <option value="SMT4线">SMT4线</option>
+                        <option value="SMT5线">SMT5线</option>
+                        <option value="SMT6线">SMT6线</option>
+                        <option value="SMT7线">SMT7线</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row" style="margin-top:10px;">
+                <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+                    <button type="button" onclick="loadDashboard()" style="background:#3b82f6;color:white;border:none;padding:10px 20px;border-radius:6px;font-size:14px;cursor:pointer;flex:1;">🔄 刷新数据</button>
+                    <button type="button" onclick="exportDashboardChart()" style="background:#10b981;color:white;border:none;padding:10px 20px;border-radius:6px;font-size:14px;cursor:pointer;flex:1;"> 看板长图</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 日期范围与报告 -->
+        <div class="card" style="margin-top:16px;">
+            <h3>选择日期范围生成报告</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>开始日期</label>
+                    <input type="date" id="report-start-date">
+                </div>
+                <div class="form-group">
+                    <label>结束日期</label>
+                    <input type="date" id="report-end-date">
+                </div>
+            </div>
+            <div class="form-row" style="margin-top:10px;">
+                <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+                    <button type="button" onclick="exportProductionReport()" style="background:#8b5cf6;color:white;border:none;padding:10px 20px;border-radius:6px;font-size:14px;cursor:pointer;flex:1;">📈 产量达成与异常损失报告</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="dashboard-content"></div>
+    </div>
+
+    <!-- 管理后台页面 -->
+    <div id="admin-page" class="hidden">
+        <div id="admin-lock" class="card">
+            <h3>🔐 管理后台需要密码验证</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>请输入管理密码</label>
+                    <input type="password" id="admin-password" placeholder="输入密码" onkeypress="if(event.key==='Enter')checkAdminPassword()">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="checkAdminPassword()">🔓 验证</button>
+        </div>
+        <div id="admin-content" class="hidden">
+        <div class="stats">
+            <div class="stat-card">
+                <div class="value" id="total-count">0</div>
+                <div class="label">SMT编码总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="avg-uph">0</div>
+                <div class="label">平均UPH</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="max-uph">0</div>
+                <div class="label">最高UPH</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="min-uph">0</div>
+                <div class="label">最低UPH</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>导入SMT编码数据</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>粘贴JSON数据（格式：[{"smt编码":"xxx","UPH":123}, ...]）</label>
+                    <textarea id="import-data" rows="5" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;font-family:monospace;" placeholder='[{"smt编码":"17175000003459","UPH":1845}, ...]'></textarea>
+                </div>
+            </div>
+            <button class="btn btn-success" onclick="importData()">📥 导入数据</button>
+            <button class="btn btn-warning" onclick="exportData()">📤 导出数据</button>
+            <button class="btn btn-danger" onclick="clearAllData()">🗑️ 清空所有数据</button>
+            <button class="btn btn-primary" onclick="resetToDefault()" style="margin-left:10px;">🔄 恢复默认数据</button>
+        </div>
+
+        <div class="card">
+            <h3>添加/编辑SMT编码</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>SMT编码</label>
+                    <input type="text" id="new-code" placeholder="输入SMT编码">
+                </div>
+                <div class="form-group">
+                    <label>目标UPH</label>
+                    <input type="number" id="new-uph" placeholder="输入目标UPH">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="addCode()">+ 添加/更新</button>
+        </div>
+
+        <div class="card">
+            <h3>SMT编码列表</h3>
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="🔍 搜索SMT编码..." oninput="renderTable()" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;">
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>序号</th>
+                        <th>SMT编码</th>
+                        <th>目标UPH</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="code-table"></tbody>
+            </table>
+            <div class="pagination" id="pagination"></div>
+        </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Supabase 配置
+const SUPABASE_URL = 'https://ksjkrldxinxalghtxyyl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_wsv-Ilv-B8uDSQXivrlJQg_ua0aKfNn';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// 数据访问层 - 封装 Supabase 操作
+const DataStore = {
+    // 加载 SMT 编码数据（仍使用 localStorage 作为缓存）
+    async loadSmtCodes() {
+        const saved = localStorage.getItem('smt_codes');
+        if (saved) {
+            return JSON.parse(saved);
+        }
+        return null;
+    },
+    
+    // 保存 SMT 编码数据（仍使用 localStorage 作为缓存）
+    async saveSmtCodes(codes) {
+        localStorage.setItem('smt_codes', JSON.stringify(codes));
+        return true;
+    },
+    
+    // 获取记录
+    async getRecord(key) {
+        // 解析 key: record_${lineName}_${date}_${slot}
+        const parts = key.split('_');
+        if (parts.length < 4) return null;
+        
+        const lineName = parts[1];
+        const date = parts[2];
+        const slot = parts.slice(3).join('_'); // 处理时段中的下划线
+        
+        const { data, error } = await supabase
+            .from('records')
+            .select('*')
+            .eq('line_name', lineName)
+            .eq('record_date', date)
+            .eq('hour_slot', slot)
+            .maybeSingle();
+        
+        if (error) {
+            console.error('获取记录失败:', error);
+            return null;
+        }
+        
+        if (data) {
+            return {
+                line_name: data.line_name,
+                smt_code: data.smt_code,
+                target_value: data.target_value,
+                achieved_value: data.achieved_value,
+                reason_category: data.reason_category,
+                reason: data.reason,
+                hour_slot: data.hour_slot,
+                shift: data.shift,
+                record_date: data.record_date
+            };
+        }
+        return null;
+    },
+    
+    // 保存记录
+    async saveRecord(key, record) {
+        const { error } = await supabase
+            .from('records')
+            .upsert({ 
+                line_name: record.line_name,
+                record_date: record.record_date,
+                hour_slot: record.hour_slot,
+                smt_code: record.smt_code,
+                target_value: record.target_value,
+                achieved_value: record.achieved_value,
+                reason_category: record.reason_category,
+                reason: record.reason,
+                shift: record.shift,
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'line_name,record_date,hour_slot'
+            });
+        
+        if (error) {
+            console.error('保存记录失败:', error);
+            return false;
+        }
+        return true;
+    },
+    
+    // 删除记录
+    async deleteRecord(key) {
+        const parts = key.split('_');
+        if (parts.length < 4) return false;
+        
+        const lineName = parts[1];
+        const date = parts[2];
+        const slot = parts.slice(3).join('_');
+        
+        const { error } = await supabase
+            .from('records')
+            .delete()
+            .eq('line_name', lineName)
+            .eq('record_date', date)
+            .eq('hour_slot', slot);
+        
+        if (error) {
+            console.error('删除记录失败:', error);
+            return false;
+        }
+        return true;
+    }
+};
+
+// 内置SMT编码数据（770条）
+const DEFAULT_SMT_CODES = {"17175000003459": 1845, "17175000003460": 4808, "17175000003539": 600, "17175000003843": 900, "17175000004062": 417, "17175000004081": 992, "17175000004082": 872, "17175000004503": 900, "17175000004514": 4854, "17175000004518": 529, "17175000004623": 300, "17175000004625": 300, "17175000004642": 2571, "17175000004650": 3597, "17175000004652": 4237, "17175000004662": 300, "17175000004708": 124, "17175000004783": 1565, "17175000005080": 252, "17175000005122": 360, "17175000005163": 470, "17175000005167": 469, "17175000005170": 440, "17175000005260": 270, "17175000005343": 46, "17175000005443": 841, "17175000005503": 120, "17175000005522": 126, "17175000005580": 1600, "17175000005604": 100, "17175000005625": 360, "17175000005629": 3597, "17175000005743": 80, "17175000005824": 867, "17175000005846": 1161, "17175000005850": 2770, "17175000005903": 112, "17175000005943": 947, "17175000005946": 3273, "17175000005949": 1799, "17175000005952": 121, "17175000005953": 210, "17175000006087": 729, "17175000006121": 480, "17175000006122": 3425, "17175000006187": 538, "17175000006203": 410, "17175000006325": 800, "17175000006383": 600, "17175000006387": 1565, "17175000006463": 122, "17175000006482": 209, "17175000006483": 280, "17175000006542": 168, "17175000006644": 300, "17175000006648": 300, "17175000006761": 900, "17175000006781": 109, "17175000006802": 148, "17175000006803": 148, "17175000006822": 230, "17175000006905": 100, "17175000006996": 1101, "17175000007102": 540, "17175000007163": 1894, "17175000007165": 947, "17175000007323": 180, "17175000007383": 244, "17175000007423": 206, "17175000007425": 372, "17175000007703": 110, "17175000007708": 92, "17175000007767": 857, "17175000007842": 385, "17175000007870": 227, "17175000007891-7895": 1000, "17175000007897": 215, "17175000007924": 2398, "17175000008002": 1600, "17175000008004": 124, "17175000008004-8005": 140, "17175000008005": 0, "17175000008062": 48, "17175000008202": 352, "17175000008222":... [truncated]
+
+// 当前使用的SMT编码数据
+let SMT_CODES = {};
+
+// 异常类别
+const REASON_CATEGORIES = [
+    { name: '无', type: '无' },
+    { name: '来料异常', type: '外部' },
+    { name: '物流配送', type: '外部' },
+    { name: '换型损失', type: '内部' },
+    { name: '爬坡损失', type: '内部' },
+    { name: '设备故障', type: '外部' },
+    { name: '流水线异常', type: '外部' },
+    { name: '人员异常', type: '内部' },
+    { name: '试制试产', type: '其他' },
+    { name: '支援', type: '其他' },
+    { name: '其他', type: '其他' }
+];
+
+// 白班时段
+const DAY_SLOTS = [
+    '8:00-9:00', '9:00-10:00', '10:00-11:00', '11:00-12:00',
+    '12:00-13:00', '13:00-14:00', '14:00-15:00', '15:00-16:00',
+    '16:00-17:00', '17:00-18:00', '18:00-19:00', '19:00-20:00'
+];
+
+// 夜班时段
+const NIGHT_SLOTS = [
+    '20:00-21:00', '21:00-22:00', '22:00-23:00', '23:00-24:00',
+    '0:00-1:00', '1:00-2:00', '2:00-3:00', '3:00-4:00',
+    '4:00-5:00', '5:00-6:00', '6:00-7:00', '7:00-8:00'
+];
+
+// 管理后台分页
+let currentPage = 1;
+const pageSize = 20;
+
+// 初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 设置默认日期为今天，显示在头部
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const displayDate = `${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日`;
+    document.getElementById('header-date').textContent = displayDate;
+    document.getElementById('dashboard-date').value = todayStr;
+    document.getElementById('dashboard-date').max = todayStr;
+    document.getElementById('record-date').value = todayStr;
+    document.getElementById('record-date').max = todayStr;
+    
+    // 设置报告日期范围：开始日期和结束日期都默认为今天
+    document.getElementById('report-start-date').value = todayStr;
+    document.getElementById('report-start-date').max = todayStr;
+    document.getElementById('report-end-date').value = todayStr;
+    document.getElementById('report-end-date').max = todayStr;
+    
+    // 加载SMT编码数据
+    loadSmtCodes();
+    
+    // 添加第一行录入
+    addInputRow();
+    
+    // 更新管理后台统计
+    updateStats();
+    
+    // 更新当班累计统计
+    updateShiftSummary();
+});
+
+// 加载SMT编码数据
+async function loadSmtCodes() {
+    // 尝试从 Supabase 加载
+    const saved = await DataStore.loadSmtCodes();
+    if (saved) {
+        const rawData = saved;
+        // 处理UPH取整和去重（同一编码取最大值）
+        const processedData = {};
+        Object.entries(rawData).forEach(([code, uph]) => {
+            const intUph = Math.round(uph); // 取整
+            if (!processedData[code] || intUph > processedData[code]) {
+                processedData[code] = intUph;
+            }
+        });
+        SMT_CODES = processedData;
+        console.log(`已从Supabase加载 ${Object.keys(SMT_CODES).length} 条SMT编码数据（已取整去重）`);
+    } else {
+        // 使用内置默认数据，同样处理
+        const processedData = {};
+        Object.entries(DEFAULT_SMT_CODES).forEach(([code, uph]) => {
+            const intUph = Math.round(uph);
+            if (!processedData[code] || intUph > processedData[code]) {
+                processedData[code] = intUph;
+            }
+        });
+        SMT_CODES = processedData;
+        saveSmtCodes();
+        console.log(`已加载默认 ${Object.keys(SMT_CODES).length} 条SMT编码数据（已取整去重）`);
+    }
+}
+
+// 保存SMT编码数据
+async function saveSmtCodes() {
+    await DataStore.saveSmtCodes(SMT_CODES);
+    updateStats();
+}
+
+// 切换标签页
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    document.getElementById('input-page').classList.add('hidden');
+    document.getElementById('dashboard-page').classList.add('hidden');
+    document.getElementById('admin-page').classList.add('hidden');
+    
+    if (tab === 'input') {
+        document.getElementById('input-page').classList.remove('hidden');
+    } else if (tab === 'dashboard') {
+        document.getElementById('dashboard-page').classList.remove('hidden');
+        loadDashboard();
+    } else if (tab === 'admin') {
+        document.getElementById('admin-page').classList.remove('hidden');
+        // 检查是否已验证
+        if (!sessionStorage.getItem('admin_verified')) {
+            document.getElementById('admin-lock').classList.remove('hidden');
+            document.getElementById('admin-content').classList.add('hidden');
+        } else {
+            document.getElementById('admin-lock').classList.add('hidden');
+            document.getElementById('admin-content').classList.remove('hidden');
+            renderTable();
+            updateStats();
+        }
+    }
+}
+
+// 管理后台密码验证
+function checkAdminPassword() {
+    const pwd = document.getElementById('admin-password').value;
+    if (pwd === '8888') {
+        sessionStorage.setItem('admin_verified', 'true');
+        document.getElementById('admin-lock').classList.add('hidden');
+        document.getElementById('admin-content').classList.remove('hidden');
+        renderTable();
+        updateStats();
+    } else {
+        alert('密码错误！');
+        document.getElementById('admin-password').value = '';
+    }
+}
+
+// 更新时段列表 - 基本信息填写完毕后自动弹出
+async function updateTimeSlots() {
+    const date = document.getElementById('record-date').value;
+    const shift = document.getElementById('shift').value;
+    const line = document.getElementById('line-name').value;
+    
+    // 检查基本信息是否填写完整
+    if (date && shift && line) {
+        // 显示录入卡片
+        document.getElementById('input-card').classList.remove('hidden');
+        
+        // 清空现有录入行
+        document.getElementById('input-rows').innerHTML = '';
+        
+        // 根据班次生成时段列表
+        const slots = shift === '白班' ? DAY_SLOTS : NIGHT_SLOTS;
+        
+        // 自动添加所有时段，检查是否已录入
+        for (const slot of slots) {
+            const key = `record_${line}_${date}_${slot}`;
+            const existingRecord = await DataStore.getRecord(key);
+            
+            if (existingRecord) {
+                // 已录入，显示折叠状态
+                addSavedRow(slot, existingRecord, shift);
+            } else {
+                // 未录入，显示空行
+                addInputRow(slot);
+            }
+        }
+        
+        // 更新当班累计统计
+        updateShiftSummary();
+    }
+}
+
+// 添加已保存的折叠行
+function addSavedRow(slot, record, shift) {
+    const row = document.createElement('div');
+    row.className = 'input-row saved-row';
+    const achievedColor = record.achieved_value >= record.target_value ? '#16a34a' : '#dc2626';
+    const rate = record.target_value > 0 ? (record.achieved_value / record.target_value * 100).toFixed(1) : 0;
+    
+    row.innerHTML = `
+        <div class="time-slot-header saved-header" onclick="toggleSavedRow(this)" style="background:#f0fdf4;padding:10px 14px;border-radius:8px;font-weight:600;color:#166534;font-size:15px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+            <input type="hidden" class="hour-slot" value="${slot}">
+            <span>${slot} <span style="color:${achievedColor};font-weight:bold;">达成: ${record.achieved_value}/${record.target_value} (${rate}%)</span></span>
+            <span style="font-size:12px;color:#6b7280;">✓ 已填写 | 点击展开</span>
+        </div>
+        <div class="saved-detail" style="display:none;margin-top:10px;">
+            <div class="form-row">
+                <div class="form-group" style="position:relative;">
+                    <label>型号（输入编码可模糊匹配）</label>
+                    <input type="text" class="smt-code-input" value="${record.smt_code}" oninput="onCodeInput(this)" onblur="setTimeout(()=>hideMatchList(this),200)">
+                    <div class="match-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #e5e7eb;border-radius:6px;max-height:200px;overflow-y:auto;z-index:100;"></div>
+                </div>
+                <div class="form-group">
+                    <label>达成数</label>
+                    <input type="number" class="achieved-value" value="${record.achieved_value}" oninput="checkUnderTarget(this); updateShiftSummary()">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>休息分钟数</label>
+                    <input type="number" class="rest-minutes" value="${record.rest_minutes}" min="0" max="60">
+                </div>
+                <div class="form-group">
+                    <label class="category-label">异常类别</label>
+                    <select class="reason-category" onchange="onCategoryChange(this); updateShiftSummary()">
+                        <option value="">请选择</option>
+                        ${REASON_CATEGORIES.map(c => `<option value="${c.name}" ${c.name === record.reason_category ? 'selected' : ''}>${c.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group" style="flex:2;">
+                    <label>未达标原因</label>
+                    <input type="text" class="reason" value="${record.reason || ''}" placeholder="异常原因（选填，可作为补充说明）">
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('input-rows').appendChild(row);
+}
+
+// 切换已保存行的展开/折叠
+function toggleSavedRow(header) {
+    const row = header.closest('.saved-row');
+    const detail = row.querySelector('.saved-detail');
+    const status = header.querySelector('span:last-child');
+    
+    if (detail.style.display === 'none') {
+        detail.style.display = 'block';
+        status.textContent = '✓ 已填写 | 点击折叠';
+    } else {
+        detail.style.display = 'none';
+        status.textContent = '✓ 已填写 | 点击展开';
+    }
+}
+
+// 显示时段分解对话框（使用原生prompt）
+function showSplitDialog(btn) {
+    const row = btn.closest('.input-row');
+    const slot = row.dataset.slot;
+    
+    const [startStr, endStr] = slot.split('-');
+    const [startH, startM] = startStr.split(':').map(Number);
+    const [endH, endM] = endStr.split(':').map(Number);
+    const totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+    
+    // 创建选项文本
+    let optionsText = '';
+    for (let m = 1; m < totalMinutes; m++) {
+        optionsText += m + ' ';
+    }
+    
+    // 使用原生prompt
+    const input = prompt(`时段分解 - ${slot}\n\n请选择分解点（1-${totalMinutes-1}分钟）：\n可用选项：${optionsText}`, Math.floor(totalMinutes / 2));
+    
+    if (input === null) return; // 用户点击取消
+    
+    const minutes = parseInt(input);
+    if (isNaN(minutes) || minutes < 1 || minutes >= totalMinutes) {
+        alert(`请输入1到${totalMinutes-1}之间的整数`);
+        return;
+    }
+    
+    confirmSplit(slot, minutes);
+}
+
+// 确认分解
+function confirmSplit(slot, splitMinutes) {
+    const [startStr, endStr] = slot.split('-');
+    const [startH, startM] = startStr.split(':').map(Number);
+    
+    // 计算分解后的两个时间段
+    const splitTime = startH * 60 + startM + splitMinutes;
+    const splitH = Math.floor(splitTime / 60);
+    const splitM = splitTime % 60;
+    
+    const slot1 = `${startStr}-${String(splitH).padStart(2, '0')}:${String(splitM).padStart(2, '0')}`;
+    const slot2 = `${String(splitH).padStart(2, '0')}:${String(splitM).padStart(2, '0')}-${endStr}`;
+    
+    // 找到当前行（通过slot匹配）
+    const rows = document.querySelectorAll('.input-row');
+    let currentRow = null;
+    rows.forEach((row) => {
+        if (row.dataset.slot === slot && row.dataset.isSubSlot !== 'true') {
+            currentRow = row;
+        }
+    });
+    
+    if (!currentRow) return;
+    
+    const parentSlot = currentRow.dataset.slot;
+    
+    // 检查是否已经有子时段（避免重复拆分）
+    const existingSubRows = Array.from(rows).filter(r => r.dataset.parentSlot === parentSlot && r.dataset.isSubSlot === 'true');
+    if (existingSubRows.length > 0) {
+        alert('该时段已经拆分过了');
+        return;
+    }
+    
+    // 保存当前行的数据
+    const currentData = {
+        smtCode: currentRow.querySelector('.smt-code-input').value,
+        achieved: currentRow.querySelector('.achieved-value').value,
+        restMinutes: currentRow.querySelector('.rest-minutes').value,
+        reasonCategory: currentRow.querySelector('.reason-category').value,
+        reason: currentRow.querySelector('.reason').value
+    };
+    
+    // 修改原时段行样式（标记为父时段，显示拆分状态）
+    currentRow.dataset.isParent = 'true';
+    const header = currentRow.querySelector('.time-slot-header');
+    header.style.background = '#fef3c7';
+    header.style.borderBottom = '2px solid #f59e0b';
+    
+    // 找到按钮容器，添加"收起/展开"按钮
+    const headerDiv = header.querySelector('div');
+    const btnContainer = headerDiv.querySelector('div:last-child');
+    btnContainer.innerHTML = `
+        <button type="button" class="btn-toggle-subs" onclick="toggleSubSlots(this)" style="background:#f59e0b;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer;">收起子时段</button>
+        <button type="button" class="btn-merge" onclick="mergeSubSlots(this)" style="background:#6b7280;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer;">合并还原</button>
+    `;
+    
+    // 创建两个新的子时段行（样式更小）
+    const newRow1 = createSubSlotRow(slot1, parentSlot);
+    const newRow2 = createSubSlotRow(slot2, parentSlot);
+    
+    // 第一个子时段继承原数据
+    if (currentData.smtCode) newRow1.querySelector('.smt-code-input').value = currentData.smtCode;
+    newRow1.querySelector('.achieved-value').value = parseFloat(currentData.achieved) || 0;
+    if (currentData.restMinutes) newRow1.querySelector('.rest-minutes').value = currentData.restMinutes;
+    if (currentData.reasonCategory) newRow1.querySelector('.reason-category').value = currentData.reasonCategory;
+    if (currentData.reason) newRow1.querySelector('.reason').value = currentData.reason;
+    
+    // 第二个子时段达成数为0
+    newRow2.querySelector('.achieved-value').value = 0;
+    
+    // 在原时段行后面插入子时段
+    currentRow.after(newRow2);
+    newRow2.after(newRow1);
+    // 注意：after是向后插入，所以先插入row2，再插入row1，最终顺序是：原行 -> row1 -> row2
+    
+    // 清空原时段行的数据（因为数据已经转移到子时段）
+    currentRow.querySelector('.smt-code-input').value = '';
+    currentRow.querySelector('.achieved-value').value = 0;
+    currentRow.querySelector('.rest-minutes').value = 0;
+    currentRow.querySelector('.reason-category').value = '';
+    currentRow.querySelector('.reason').value = '';
+    
+    // 原时段行变为只读显示状态
+    const formRows = currentRow.querySelectorAll('.form-row');
+    formRows.forEach(fr => fr.style.display = 'none');
+    
+    updateShiftSummary();
+}
+
+// 创建子时段行（样式更小，缩进显示）
+function createSubSlotRow(slotStr, parentSlot) {
+    const row = document.createElement('div');
+    row.className = 'input-row sub-slot-row';
+    row.dataset.slot = slotStr;
+    row.dataset.parentSlot = parentSlot;
+    row.dataset.isSubSlot = 'true';
+    
+    row.innerHTML = `
+        <div class="time-slot-header" style="background:#e0f2fe;padding:8px 12px;border-radius:6px;font-weight:500;color:#0369a1;font-size:13px;border-bottom:1px solid #7dd3fc;margin-left:20px;">
+            <input type="hidden" class="hour-slot" value="${slotStr}">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span>↳ ${slotStr}</span>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <button type="button" class="btn-split" onclick="showSplitDialog(this)" style="background:#3b82f6;color:white;border:none;padding:3px 8px;border-radius:4px;font-size:11px;cursor:pointer;">分解</button>
+                    <button type="button" onclick="deleteSubSlot(this)" style="background:#ef4444;color:white;border:none;padding:3px 8px;border-radius:4px;font-size:11px;cursor:pointer;">删除</button>
+                </div>
+            </div>
+        </div>
+        <div class="form-row" style="margin-left:20px;">
+            <div class="form-group" style="position:relative;">
+                <label style="font-size:11px;">型号（输入编码可模糊匹配）</label>
+                <input type="text" class="smt-code-input" placeholder="输入编码" oninput="onCodeInput(this)" onblur="setTimeout(()=>hideMatchList(this),200)" style="font-size:13px;padding:8px 10px;">
+                <div class="match-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #e5e7eb;border-radius:6px;max-height:200px;overflow-y:auto;z-index:100;"></div>
+            </div>
+            <div class="form-group">
+                <label style="font-size:11px;">达成数</label>
+                <input type="number" class="achieved-value" placeholder="输入达成数" oninput="checkUnderTarget(this); updateShiftSummary()" style="font-size:13px;padding:8px 10px;">
+            </div>
+        </div>
+        <div class="form-row" style="margin-left:20px;">
+            <div class="form-group">
+                <label style="font-size:11px;">休息分钟数</label>
+                <input type="number" class="rest-minutes" value="0" min="0" max="60" style="font-size:13px;padding:8px 10px;">
+            </div>
+            <div class="form-group">
+                <label class="category-label" style="font-size:11px;">异常类别</label>
+                <select class="reason-category" onchange="onCategoryChange(this); updateShiftSummary()" style="font-size:13px;padding:8px 10px;">
+                    <option value="">请选择</option>
+                    ${REASON_CATEGORIES.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group" style="flex:2;">
+                <label style="font-size:11px;">未达标原因</label>
+                <input type="text" class="reason" placeholder="异常原因（选填）" style="font-size:13px;padding:8px 10px;">
+            </div>
+        </div>
+    `;
+    
+    return row;
+}
+
+// 切换子时段的显示/隐藏
+function toggleSubSlots(btn) {
+    const row = btn.closest('.input-row');
+    const parentSlot = row.dataset.slot;
+    const allRows = document.querySelectorAll('.input-row');
+    const subRows = Array.from(allRows).filter(r => r.dataset.parentSlot === parentSlot && r.dataset.isSubSlot === 'true');
+    
+    const isHidden = subRows[0]?.style.display === 'none';
+    
+    subRows.forEach(r => {
+        r.style.display = isHidden ? '' : 'none';
+    });
+    
+    btn.textContent = isHidden ? '收起子时段' : '展开子时段';
+}
+
+// 合并还原子时段
+function mergeSubSlots(btn) {
+    const row = btn.closest('.input-row');
+    const parentSlot = row.dataset.slot;
+    const allRows = document.querySelectorAll('.input-row');
+    const subRows = Array.from(allRows).filter(r => r.dataset.parentSlot === parentSlot && r.dataset.isSubSlot === 'true');
+    
+    if (subRows.length === 0) return;
+    
+    if (!confirm('确定要合并还原为整时段吗？子时段的数据将丢失。')) return;
+    
+    // 删除所有子时段
+    subRows.forEach(r => r.remove());
+    
+    // 恢复原时段行样式
+    row.dataset.isParent = 'false';
+    const header = row.querySelector('.time-slot-header');
+    header.style.background = '#f0f7ff';
+    header.style.borderBottom = '2px solid #3b82f6';
+    
+    // 恢复按钮
+    const headerDiv = header.querySelector('div');
+    const btnContainer = headerDiv.querySelector('div:last-child');
+    btnContainer.innerHTML = `
+        <button type="button" class="btn-split" onclick="showSplitDialog(this)" style="background:white;color:#3b82f6;border:1px solid #3b82f6;padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer;">时段分解（仅该小时内换型其他型号）</button>
+    `;
+    
+    // 恢复表单显示
+    const formRows = row.querySelectorAll('.form-row');
+    formRows.forEach(fr => fr.style.display = '');
+    
+    updateShiftSummary();
+}
+
+// 删除子时段（只删除单个，不影响其他子时段）
+function deleteSubSlot(btn) {
+    const row = btn.closest('.input-row');
+    const parentSlot = row.dataset.parentSlot;
+    
+    // 找到所有同父时段的子时段
+    const allRows = document.querySelectorAll('.input-row');
+    const subRows = Array.from(allRows).filter(r => r.dataset.parentSlot === parentSlot && r.dataset.isSubSlot === 'true');
+    
+    if (subRows.length === 0) return;
+    
+    // 删除当前子时段行
+    row.remove();
+    
+    // 检查是否还有剩余的子时段
+    const remainingSubRows = Array.from(allRows).filter(r => r.dataset.parentSlot === parentSlot && r.dataset.isSubSlot === 'true' && r !== row);
+    
+    // 如果没有剩余子时段了，自动合并还原原时段
+    if (remainingSubRows.length === 0) {
+        const parentRow = Array.from(allRows).find(r => r.dataset.slot === parentSlot && r.dataset.isParent === 'true');
+        if (parentRow) {
+            // 恢复原时段行样式
+            parentRow.dataset.isParent = 'false';
+            const header = parentRow.querySelector('.time-slot-header');
+            header.style.background = '#f0f7ff';
+            header.style.borderBottom = '2px solid #3b82f6';
+            
+            // 恢复按钮
+            const headerDiv = header.querySelector('div');
+            const btnContainer = headerDiv.querySelector('div:last-child');
+            btnContainer.innerHTML = `
+                <button type="button" class="btn-split" onclick="showSplitDialog(this)" style="background:white;color:#3b82f6;border:1px solid #3b82f6;padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer;">时段分解（仅该小时内换型其他型号）</button>
+            `;
+            
+            // 恢复表单显示
+            const formRows = parentRow.querySelectorAll('.form-row');
+            formRows.forEach(fr => fr.style.display = '');
+        }
+    }
+    
+    updateShiftSummary();
+}
+
+// 添加录入行
+function addInputRow(presetSlot = '', isSubSlot = false, parentSlot = null) {
+    const row = createInputRow(presetSlot, isSubSlot, parentSlot);
+    document.getElementById('input-rows').appendChild(row);
+}
+
+// 创建录入行（返回行元素，不直接添加到DOM）
+function createInputRow(presetSlot = '', isSubSlot = false, parentSlot = null) {
+    const row = document.createElement('div');
+    row.className = 'input-row';
+    row.dataset.slot = presetSlot;
+    row.dataset.parentSlot = parentSlot || presetSlot;
+    row.dataset.isSubSlot = isSubSlot;
+    
+    row.innerHTML = `
+        <div class="time-slot-header" style="background:#f0f7ff;padding:10px 14px;border-radius:8px;font-weight:600;color:#1e40af;font-size:15px;border-bottom:2px solid #3b82f6;">
+            <input type="hidden" class="hour-slot" value="${presetSlot}">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span>${presetSlot}</span>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    ${!isSubSlot ? `
+                        <button type="button" class="btn-split" onclick="showSplitDialog(this)" style="background:white;color:#3b82f6;border:1px solid #3b82f6;padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer;">时段分解（仅该小时内换型其他型号）</button>
+                    ` : ''}
+                    ${isSubSlot ? `
+                        <button type="button" onclick="deleteSubSlot(this)" style="background:#ef4444;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:12px;cursor:pointer;">删除</button>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group" style="position:relative;">
+                <label>型号（输入编码可模糊匹配）</label>
+                <input type="text" class="smt-code-input" placeholder="输入编码" oninput="onCodeInput(this)" onblur="setTimeout(()=>hideMatchList(this),200)">
+                <div class="match-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #e5e7eb;border-radius:6px;max-height:200px;overflow-y:auto;z-index:100;"></div>
+            </div>
+            <div class="form-group">
+                <label>达成数</label>
+                <input type="number" class="achieved-value" placeholder="输入达成数" oninput="checkUnderTarget(this); updateShiftSummary()">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>休息分钟数</label>
+                <input type="number" class="rest-minutes" value="0" min="0" max="60">
+            </div>
+            <div class="form-group">
+                <label class="category-label">异常类别</label>
+                <select class="reason-category" onchange="onCategoryChange(this); updateShiftSummary()">
+                    <option value="">请选择</option>
+                    ${REASON_CATEGORIES.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group" style="flex:2;">
+                <label>未达标原因</label>
+                <input type="text" class="reason" placeholder="异常原因（选填，可作为补充说明）">
+            </div>
+        </div>
+    `;
+    
+    return row;
+}
+
+// 检查未达标并更新异常类别标签样式
+function checkUnderTarget(el) {
+    const row = el.closest('.input-row');
+    const codeInput = row.querySelector('.smt-code-input');
+    const code = codeInput.value.trim();
+    const uph = SMT_CODES[code] || 0;
+    const achieved = parseInt(el.value) || 0;
+    const label = row.querySelector('.category-label');
+    
+    if (code && uph > 0 && achieved < uph) {
+        label.innerHTML = '<span style="color:#dc2626;font-weight:600;">异常类别</span> <span style="color:#dc2626;font-size:12px;">（产量未达标必填）</span>';
+    } else {
+        label.textContent = '异常类别';
+    }
+}
+
+// SMT编码输入 - 模糊匹配
+function onCodeInput(el) {
+    const row = el.closest('.input-row');
+    const input = el.value.trim();
+    const matchList = row.querySelector('.match-list');
+    const targetInput = row.querySelector('.target-value');
+    
+    if (!input) {
+        matchList.style.display = 'none';
+        targetInput.value = '';
+        return;
+    }
+    
+    // 模糊匹配
+    const matches = Object.entries(SMT_CODES)
+        .filter(([code]) => code.includes(input))
+        .slice(0, 10);
+    
+    if (matches.length === 0) {
+        matchList.style.display = 'none';
+        targetInput.value = '';
+        return;
+    }
+    
+    // 如果精确匹配，直接填充
+    if (matches.length === 1 && matches[0][0] === input) {
+        targetInput.value = matches[0][1];
+        matchList.style.display = 'none';
+        return;
+    }
+    
+    // 显示匹配列表
+    matchList.innerHTML = matches.map(([code, uph]) => 
+        `<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px;" 
+              onmousedown="selectMatch(this, '${code}', ${uph})">
+            <strong>${code}</strong> <span style="color:#6b7280;float:right;">UPH: ${uph}</span>
+        </div>`
+    ).join('');
+    matchList.style.display = 'block';
+}
+
+function selectMatch(el, code, uph) {
+    const row = el.closest('.input-row');
+    const input = row.querySelector('.smt-code-input');
+    const targetInput = row.querySelector('.target-value');
+    const matchList = row.querySelector('.match-list');
+    
+    input.value = code;
+    targetInput.value = uph;
+    matchList.style.display = 'none';
+    
+    // 触发未达标检查
+    const achievedInput = row.querySelector('.achieved-value');
+    checkUnderTarget(achievedInput);
+}
+
+function hideMatchList(el) {
+    const row = el.closest('.input-row');
+    const matchList = row.querySelector('.match-list');
+    const input = row.querySelector('.smt-code-input');
+    const targetInput = row.querySelector('.target-value');
+    
+    matchList.style.display = 'none';
+    
+    // 如果输入的值精确匹配，填充目标值
+    if (SMT_CODES[input.value.trim()] !== undefined) {
+        targetInput.value = SMT_CODES[input.value.trim()];
+    }
+    
+    // 触发未达标检查
+    const achievedInput = row.querySelector('.achieved-value');
+    checkUnderTarget(achievedInput);
+}
+
+// 异常类别变更
+function onCategoryChange(el) {
+    const row = el.closest('.input-row');
+    checkExclusion(row);
+}
+
+// 检查剔除规则
+function checkExclusion(row) {
+    const category = row.querySelector('.reason-category').value;
+    const achievedInput = row.querySelector('.achieved-value');
+    
+    if (category === '试制试产' || category === '支援') {
+        achievedInput.value = 0;
+    }
+}
+
+// 更新当班累计统计
+async function updateShiftSummary() {
+    const date = document.getElementById('record-date').value;
+    const shift = document.getElementById('shift').value;
+    const lineName = document.getElementById('line-name').value;
+    
+    if (!date || !shift || !lineName) {
+        document.getElementById('summary-target').textContent = '0';
+        document.getElementById('summary-achieved').textContent = '0';
+        document.getElementById('summary-rate').textContent = '0%';
+        return;
+    }
+    
+    let totalTarget = 0;
+    let totalAchieved = 0;
+    
+    // 根据班次获取时段列表
+    const slots = shift === '白班' ? DAY_SLOTS : NIGHT_SLOTS;
+    
+    // 从 Supabase 读取当前班次的所有记录
+    for (const slot of slots) {
+        const key = `record_${lineName}_${date}_${slot}`;
+        const record = await DataStore.getRecord(key);
+        
+        if (record) {
+            // 使用保存时的 target_value（UPH）
+            totalTarget += record.target_value || 0;
+            totalAchieved += record.achieved_value || 0;
+        }
+    }
+    
+    const rate = totalTarget > 0 ? ((totalAchieved / totalTarget) * 100).toFixed(1) : 0;
+    
+    document.getElementById('summary-target').textContent = totalTarget;
+    document.getElementById('summary-achieved').textContent = totalAchieved;
+    document.getElementById('summary-rate').textContent = rate + '%';
+}
+
+// 保存所有记录
+function saveAllRecords() {
+    const defaultDate = document.getElementById('record-date').value;
+    const shift = document.getElementById('shift').value;
+    const lineName = document.getElementById('line-name').value;
+    
+    if (!defaultDate) {
+        alert('请选择日期');
+        return;
+    }
+    
+    const rows = document.querySelectorAll('.input-row, .saved-row');
+    
+    // 先统计实际可以保存的记录数（有型号且有时段的行）
+    let validRecordCount = 0;
+    for (const row of rows) {
+        const smtCode = row.querySelector('.smt-code-input')?.value.trim();
+        let hourSlot = row.querySelector('.hour-slot')?.value;
+        if (!hourSlot && row.classList.contains('saved-row')) {
+            const recordData = JSON.parse(row.dataset.recordData || '{}');
+            hourSlot = recordData.hour_slot;
+        }
+        
+        // 必须同时有型号和时段才算有效记录
+        if (smtCode && hourSlot) {
+            validRecordCount++;
+        }
+    }
+    
+    if (validRecordCount === 0) {
+        alert('没有填写任何数据');
+        return;
+    }
+    
+    if (!confirm(`是否提交 ${validRecordCount} 处数据？`)) {
+        return;
+    }
+    
+    const records = [];
+    
+    for (const row of rows) {
+        // 获取时段信息：新行从hour-slot获取，已保存行从recordData获取
+        let hourSlot = row.querySelector('.hour-slot')?.value;
+        if (!hourSlot && row.classList.contains('saved-row')) {
+            const recordData = JSON.parse(row.dataset.recordData || '{}');
+            hourSlot = recordData.hour_slot;
+        }
+        
+        const smtCode = row.querySelector('.smt-code-input')?.value.trim();
+        const targetValue = SMT_CODES[smtCode] || 0;
+        const achievedValue = parseInt(row.querySelector('.achieved-value')?.value) || 0;
+        const reasonCategory = row.querySelector('.reason-category')?.value;
+        const reason = row.querySelector('.reason')?.value.trim();
+        const restMinutes = parseInt(row.querySelector('.rest-minutes')?.value) || 0;
+        
+        if (!hourSlot || !smtCode) {
+            continue;
+        }
+        
+        // 验证：如果达成量未达到UPH值，必须填写异常类别和未达标原因
+        if (achievedValue < targetValue) {
+            if (!reasonCategory) {
+                alert(`时段 ${hourSlot} 达成量(${achievedValue})未达到目标值(${targetValue})，请选择异常类别`);
+                row.querySelector('.reason-category')?.focus();
+                return;
+            }
+            if (!reason) {
+                alert(`时段 ${hourSlot} 达成量(${achievedValue})未达到目标值(${targetValue})，请填写未达标原因`);
+                row.querySelector('.reason')?.focus();
+                return;
+            }
+        }
+        
+        const key = `record_${lineName}_${defaultDate}_${hourSlot}`;
+        const existing = await DataStore.getRecord(key);
+        // 如果是已保存的行，直接覆盖；如果是新行，询问是否覆盖
+        if (existing && !row.classList.contains('saved-row')) {
+            if (!confirm(`该线体该时段已有记录，是否覆盖？`)) {
+                return;
+            }
+        }
+        
+        const record = {
+            line_name: lineName,
+            smt_code: smtCode,
+            target_value: targetValue,
+            achieved_value: achievedValue,
+            reason_category: reasonCategory,
+            reason: reason,
+            hour_slot: hourSlot,
+            shift: shift,
+            record_date: defaultDate,
+            rest_minutes: restMinutes
+        };
+        
+        records.push(record);
+        await DataStore.saveRecord(key, record);
+        
+        // 如果是已保存的行，更新其dataset并保持展开状态
+        if (row.classList.contains('saved-row')) {
+            row.dataset.recordData = JSON.stringify(record);
+            // 更新显示
+            const rate = targetValue > 0 ? ((achievedValue / targetValue) * 100).toFixed(1) : 0;
+            const rateColor = rate >= 100 ? '#16a34a' : '#dc2626';
+            const header = row.querySelector('.saved-header');
+            if (header) {
+                const headerSpan = header.querySelector('span:last-child');
+                if (headerSpan) {
+                    headerSpan.innerHTML = `达成: ${achievedValue}/${targetValue} (${rate}%)`;
+                    headerSpan.style.color = rateColor;
+                }
+            }
+            // 更新target-value隐藏字段
+            const targetInput = row.querySelector('.target-value');
+            if (targetInput) targetInput.value = targetValue;
+            // 保持展开状态，让用户可以继续编辑
+            row.dataset.expanded = 'true';
+            const detail = row.querySelector('.saved-detail');
+            const icon = header?.querySelector('.toggle-icon');
+            if (detail) detail.style.display = 'block';
+            if (icon) icon.textContent = '▼';
+        } else {
+            // 将新行转换为已保存的折叠状态
+            convertToSavedRow(row, record);
+        }
+    }
+    
+    if (records.length > 0) {
+        alert(`成功保存 ${records.length} 条记录！`);
+    }
+    
+    // 更新累计统计
+    updateShiftSummary();
+}
+
+// 将录入行转换为已保存的折叠行
+function convertToSavedRow(row, record) {
+    row.classList.add('saved-row');
+    row.classList.remove('input-row');
+    row.dataset.expanded = 'false'; // 初始化状态为折叠
+    const rate = record.target_value > 0 ? ((record.achieved_value / record.target_value) * 100).toFixed(1) : 0;
+    const rateColor = rate >= 100 ? '#16a34a' : '#dc2626';
+    
+    row.innerHTML = `
+        <div class="time-slot-header saved-header" onclick="toggleSavedRow(this)" style="background:#f0f7ff;padding:10px 14px;border-radius:8px;font-weight:600;color:#1e40af;font-size:15px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+            <span>
+                <span class="toggle-icon" style="margin-right:8px;font-size:12px;">▶</span>
+                ${record.hour_slot}
+            </span>
+            <span style="font-size:13px;color:${rateColor};">
+                达成: ${record.achieved_value}/${record.target_value} (${rate}%)
+            </span>
+        </div>
+        <div class="saved-detail" style="display:none;padding:12px 0 0 0;">
+            <div class="form-row">
+                <div class="form-group" style="position:relative;">
+                    <label>型号（输入编码可模糊匹配）</label>
+                    <input type="text" class="smt-code-input" value="${record.smt_code}" oninput="onCodeInput(this)" onblur="setTimeout(()=>hideMatchList(this),200)">
+                    <input type="hidden" class="target-value" value="${record.target_value}">
+                    <div class="match-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #e5e7eb;border-radius:6px;max-height:200px;overflow-y:auto;z-index:100;"></div>
+                </div>
+                <div class="form-group">
+                    <label>达成数</label>
+                    <input type="number" class="achieved-value" value="${record.achieved_value}" oninput="checkUnderTarget(this); updateShiftSummary()">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>休息分钟数</label>
+                    <input type="number" class="rest-minutes" value="${record.rest_minutes}" min="0" max="60">
+                </div>
+                <div class="form-group">
+                    <label class="category-label">异常类别</label>
+                    <select class="reason-category" onchange="onCategoryChange(this); updateShiftSummary()">
+                        <option value="">请选择</option>
+                        ${REASON_CATEGORIES.map(c => `<option value="${c.name}" ${c.name === record.reason_category ? 'selected' : ''}>${c.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group" style="flex:2;">
+                    <label>未达标原因</label>
+                    <input type="text" class="reason" value="${record.reason || ''}" placeholder="异常原因（选填，可作为补充说明）">
+                </div>
+            </div>
+            <div class="form-row" style="margin-top:12px;">
+                <div class="form-group" style="flex:none;">
+                    <button type="button" onclick="editSavedRecord(this)" style="background:#f59e0b;color:white;border:none;padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;">✏️ 修改</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 存储原始record数据到row的dataset中
+    row.dataset.recordData = JSON.stringify(record);
+    
+    // 如果未达标，触发标签变红
+    const achievedInput = row.querySelector('.achieved-value');
+    checkUnderTarget(achievedInput);
+}
+
+// 折叠/展开已保存的行
+function toggleSavedRow(headerEl) {
+    const row = headerEl.closest('.saved-row') || headerEl.closest('.input-row');
+    const detail = row.querySelector('.saved-detail');
+    const icon = headerEl.querySelector('.toggle-icon');
+    
+    // 判断当前状态：如果detail是隐藏的，则是折叠状态
+    const isCurrentlyCollapsed = detail.style.display === 'none';
+    
+    if (isCurrentlyCollapsed) {
+        // 展开
+        detail.style.display = 'block';
+        icon.textContent = '▼';
+        // 展开时添加视觉提示，表明可编辑状态
+        row.style.backgroundColor = '#fef3c7';
+        setTimeout(() => {
+            row.style.backgroundColor = '';
+        }, 2000);
+        // 自动聚焦到第一个输入框，提示用户可以编辑
+        setTimeout(() => {
+            const firstInput = detail.querySelector('.smt-code-input');
+            if (firstInput) {
+                firstInput.focus();
+                firstInput.select();
+            }
+        }, 100);
+    } else {
+        // 折叠
+        detail.style.display = 'none';
+        icon.textContent = '▶';
+    }
+}
+
+// 修改已保存的记录
+function editSavedRecord(btn) {
+    const row = btn.closest('.saved-row');
+    const recordData = JSON.parse(row.dataset.recordData);
+    
+    // 获取当前表单数据
+    const smtCode = row.querySelector('.smt-code-input').value.trim();
+    const targetValue = SMT_CODES[smtCode] || 0;
+    const achievedValue = parseInt(row.querySelector('.achieved-value').value) || 0;
+    const reasonCategory = row.querySelector('.reason-category').value;
+    const reason = row.querySelector('.reason').value.trim();
+    const restMinutes = parseInt(row.querySelector('.rest-minutes').value) || 0;
+    
+    // 验证：如果达成量未达到UPH值，必须填写异常类别和未达标原因
+    if (achievedValue < targetValue) {
+        if (!reasonCategory) {
+            alert(`时段 ${recordData.hour_slot} 达成量(${achievedValue})未达到目标值(${targetValue})，请选择异常类别`);
+            row.querySelector('.reason-category').focus();
+            return;
+        }
+        if (!reason) {
+            alert(`时段 ${recordData.hour_slot} 达成量(${achievedValue})未达到目标值(${targetValue})，请填写未达标原因`);
+            row.querySelector('.reason').focus();
+            return;
+        }
+    }
+    
+    // 更新record数据
+    const updatedRecord = {
+        ...recordData,
+        smt_code: smtCode,
+        target_value: targetValue,
+        achieved_value: achievedValue,
+        reason_category: reasonCategory,
+        reason: reason,
+        rest_minutes: restMinutes
+    };
+    
+    // 保存到Supabase
+    const key = `record_${recordData.line_name}_${recordData.record_date}_${recordData.hour_slot}`;
+    await DataStore.saveRecord(key, updatedRecord);
+    
+    // 更新row的dataset
+    row.dataset.recordData = JSON.stringify(updatedRecord);
+    
+    // 更新显示
+    const rate = targetValue > 0 ? ((achievedValue / targetValue) * 100).toFixed(1) : 0;
+    const rateColor = rate >= 100 ? '#16a34a' : '#dc2626';
+    const header = row.querySelector('.saved-header');
+    const headerSpan = header.querySelector('span:last-child');
+    headerSpan.innerHTML = `达成: ${achievedValue}/${targetValue} (${rate}%)`;
+    headerSpan.style.color = rateColor;
+    
+    // 更新target-value隐藏字段
+    row.querySelector('.target-value').value = targetValue;
+    
+    // 如果未达标，触发标签变红
+    const achievedInput = row.querySelector('.achieved-value');
+    checkUnderTarget(achievedInput);
+    
+    alert(`时段 ${recordData.hour_slot} 的记录已更新！`);
+}
+
+// 加载看板
+function loadDashboard() {
+    const date = document.getElementById('dashboard-date').value;
+    const shift = document.getElementById('dashboard-shift').value;
+    const lineFilter = document.getElementById('dashboard-line').value;
+    
+    if (!date) return;
+    
+    const lines = ['SMT1线', 'SMT2线', 'SMT3线', 'SMT4线', 'SMT5线', 'SMT6线', 'SMT7线'];
+    const content = document.getElementById('dashboard-content');
+    content.innerHTML = '';
+    
+    for (const line of lines) {
+        if (lineFilter && line !== lineFilter) continue;
+        
+        const lineData = [];
+        const chartData = []; // 用于柱状图的数据，包含所有时段
+        
+        if (!shift || shift === '白班') {
+            for (const slot of DAY_SLOTS) {
+                const key = `record_${line}_${date}_${slot}`;
+                const record = await DataStore.getRecord(key);
+                if (record) {
+                    lineData.push({ ...record, shift: '白班' });
+                    chartData.push({ ...record, shift: '白班' });
+                } else {
+                    // 未填写的时段也要显示在柱状图中，值为0
+                    chartData.push({
+                        hour_slot: slot,
+                        target_value: 0,
+                        achieved_value: 0,
+                        smt_code: '-',
+                        shift: '白班'
+                    });
+                }
+            }
+        }
+        
+        if (!shift || shift === '夜班') {
+            for (const slot of NIGHT_SLOTS) {
+                const key = `record_${line}_${date}_${slot}`;
+                const record = await DataStore.getRecord(key);
+                if (record) {
+                    lineData.push({ ...record, shift: '夜班' });
+                    chartData.push({ ...record, shift: '夜班' });
+                } else {
+                    // 未填写的时段也要显示在柱状图中，值为0
+                    chartData.push({
+                        hour_slot: slot,
+                        target_value: 0,
+                        achieved_value: 0,
+                        smt_code: '-',
+                        shift: '夜班'
+                    });
+                }
+            }
+        }
+        
+        if (lineData.length === 0 && chartData.length === 0) continue;
+        
+        const card = document.createElement('div');
+        card.className = 'card';
+        
+        const totalTarget = lineData.reduce((sum, r) => sum + r.target_value, 0);
+        const totalAchieved = lineData.reduce((sum, r) => sum + r.achieved_value, 0);
+        const rate = totalTarget > 0 ? (totalAchieved / totalTarget * 100).toFixed(1) : 0;
+        const rateClass = rate >= 100 ? 'rate-green' : 'rate-red';
+        const chartId = `chart_${line.replace(/[^a-zA-Z0-9]/g, '')}_${date.replace(/-/g, '')}`;
+        
+        card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                <h3 style="margin:0;border:none;padding:0;">${line}</h3>
+                <div style="text-align:right;">
+                    <div style="font-size:28px;font-weight:bold;color:${rate >= 100 ? '#16a34a' : '#dc2626'};">${rate}%</div>
+                    <div style="font-size:13px;color:#6b7280;">达成${totalAchieved}/目标${totalTarget}</div>
+                </div>
+            </div>
+            <div style="height:280px;margin-bottom:15px;">
+                <canvas id="${chartId}"></canvas>
+            </div>
+            ${lineData.length > 0 ? `
+            <table>
+                <thead>
+                    <tr>
+                        <th>时段</th>
+                        <th>型号</th>
+                        <th>目标</th>
+                        <th>达成</th>
+                        <th>超产/欠产</th>
+                        <th>异常类别</th>
+                        <th>异常原因</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${lineData.map(r => {
+                        const diff = r.achieved_value - r.target_value;
+                        const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+                        const diffColor = diff >= 0 ? '#16a34a' : '#dc2626';
+                        const achievedColor = r.achieved_value >= r.target_value ? '#16a34a' : '#dc2626';
+                        return `
+                            <tr>
+                                <td>${r.hour_slot}</td>
+                                <td>${r.smt_code}</td>
+                                <td>${r.target_value}</td>
+                                <td style="color:${achievedColor};font-weight:bold;">${r.achieved_value}</td>
+                                <td style="color:${diffColor};font-weight:bold;">${diffStr}</td>
+                                <td>${r.reason_category || '-'}</td>
+                                <td>${r.reason || '-'}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+                <tfoot>
+                    <tr style="background:#f3f4f6;font-weight:bold;">
+                        <td>合计</td>
+                        <td>-</td>
+                        <td>${totalTarget}</td>
+                        <td style="color:${totalAchieved >= totalTarget ? '#16a34a' : '#dc2626'};">${totalAchieved}</td>
+                        <td style="color:${totalAchieved >= totalTarget ? '#16a34a' : '#dc2626'};">${totalAchieved - totalTarget > 0 ? '+' : ''}${totalAchieved - totalTarget}</td>
+                        <td>-</td>
+                        <td>-</td>
+                    </tr>
+                </tfoot>
+            </table>
+            ` : '<p style="text-align:center;color:#6b7280;padding:10px;">暂无数据录入</p>'}
+        `;
+        
+        content.appendChild(card);
+        
+        // 渲染图表（使用chartData，包含所有时段）
+        setTimeout(() => {
+            renderLineChart(chartId, chartData.length > 0 ? chartData : lineData);
+        }, 100);
+    }
+    
+    if (content.innerHTML === '') {
+        content.innerHTML = '<div class="card"><p style="text-align:center;color:#6b7280;">暂无数据</p></div>';
+    }
+}
+
+// 导出看板长图
+function exportDashboardChart() {
+    const date = document.getElementById('dashboard-date').value;
+    const shift = document.getElementById('dashboard-shift').value;
+    const lineFilter = document.getElementById('dashboard-line').value;
+    
+    if (!date) {
+        alert('请先选择日期');
+        return;
+    }
+    
+    // 显示加载提示
+    const toast = document.createElement('div');
+    toast.id = 'export-toast';
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.75);color:white;padding:20px 40px;border-radius:12px;font-size:16px;z-index:99999;text-align:center;';
+    toast.innerHTML = '⏳ 正在生成看板长图...';
+    document.body.appendChild(toast);
+    
+    const lines = ['SMT1线', 'SMT2线', 'SMT3线', 'SMT4线', 'SMT5线', 'SMT6线', 'SMT7线'];
+    const targetLines = lineFilter ? [lineFilter] : lines;
+    
+    // 确定时段
+    let slots = [];
+    if (!shift || shift === '白班') {
+        slots = slots.concat(DAY_SLOTS);
+    }
+    if (!shift || shift === '夜班') {
+        slots = slots.concat(NIGHT_SLOTS);
+    }
+    
+    // 汇总各线体达成数据（按时段累加）
+    const aggregatedData = [];
+    for (const slot of slots) {
+        let totalTarget = 0;
+        let totalAchieved = 0;
+        for (const line of targetLines) {
+            const key = `record_${line}_${date}_${slot}`;
+            const record = await DataStore.getRecord(key);
+            if (record) {
+                totalTarget += record.target_value;
+                totalAchieved += record.achieved_value;
+            }
+        }
+        aggregatedData.push({
+            hour_slot: slot,
+            target_value: totalTarget,
+            achieved_value: totalAchieved
+        });
+    }
+    
+    const totalTarget = aggregatedData.reduce((sum, r) => sum + r.target_value, 0);
+    const totalAchieved = aggregatedData.reduce((sum, r) => sum + r.achieved_value, 0);
+    const rate = totalTarget > 0 ? (totalAchieved / totalTarget * 100).toFixed(1) : 0;
+    const rateColor = rate >= 100 ? '#16a34a' : '#dc2626';
+    const shiftText = !shift ? '全部班次' : shift;
+    const lineText = lineFilter || '全部线体';
+    
+    // 创建导出容器（使用fixed定位，不用transform，确保html2canvas能正确捕获）
+    const exportDiv = document.createElement('div');
+    exportDiv.id = 'export-container';
+    exportDiv.style.cssText = 'position:fixed;left:0;top:0;width:800px;background:#f0f2f5;padding:20px;font-family:Microsoft YaHei,PingFang SC,sans-serif;z-index:99999;';
+    
+    // 标题区域
+    exportDiv.innerHTML = `
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="font-size:28px;font-weight:bold;color:#2563eb;margin-bottom:8px;"> 产线小时达成看板</div>
+            <div style="font-size:16px;color:#6b7280;">${date}</div>
+        </div>
+        
+        <!-- 图表卡片 -->
+        <div style="background:white;border-radius:16px;padding:24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <div style="font-size:20px;font-weight:bold;color:#1f2937;">🏅 ${lineText}（${shiftText}）</div>
+                <div style="text-align:right;">
+                    <div style="font-size:32px;font-weight:bold;color:${rateColor};">${rate}%</div>
+                    <div style="font-size:13px;color:#6b7280;">达成${totalAchieved}/目标${totalTarget}</div>
+                </div>
+            </div>
+            <div style="width:100%;height:350px;position:relative;">
+                <canvas id="exportChartCanvas" width="760" height="350"></canvas>
+            </div>
+        </div>
+        
+        <!-- 明细表卡片 -->
+        <div style="background:white;border-radius:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="font-size:18px;font-weight:bold;color:#1f2937;">📋 ${lineText}（${shiftText}） 每小时产量明细</div>
+                <div style="background:#dbeafe;color:#2563eb;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:bold;">${shiftText === '白班' ? '开班 12h' : '开班 12h'}</div>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                <thead>
+                    <tr style="background:#f3f4f6;">
+                        <th style="padding:10px 8px;text-align:left;border-bottom:2px solid #e5e7eb;">时段</th>
+                        <th style="padding:10px 8px;text-align:left;border-bottom:2px solid #e5e7eb;">目标</th>
+                        <th style="padding:10px 8px;text-align:left;border-bottom:2px solid #e5e7eb;">达成</th>
+                        <th style="padding:10px 8px;text-align:left;border-bottom:2px solid #e5e7eb;">超产/欠产</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${aggregatedData.map(r => {
+                        const diff = r.achieved_value - r.target_value;
+                        const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+                        const diffColor = diff >= 0 ? '#16a34a' : '#dc2626';
+                        const achievedColor = r.achieved_value >= r.target_value ? '#16a34a' : '#dc2626';
+                        const achievedBg = r.achieved_value < r.target_value ? '#fef2f2' : (r.achieved_value > r.target_value ? '#f0fdf4' : 'transparent');
+                        const label = r.hour_slot.replace(':00-', '~').replace(':00', '');
+                        return `<tr>
+                            <td style="padding:8px;border-bottom:1px solid #f3f4f6;font-weight:bold;">${label}</td>
+                            <td style="padding:8px;border-bottom:1px solid #f3f4f6;">${r.target_value}</td>
+                            <td style="padding:8px;border-bottom:1px solid #f3f4f6;color:${achievedColor};font-weight:bold;background:${achievedBg};">${r.achieved_value}</td>
+                            <td style="padding:8px;border-bottom:1px solid #f3f4f6;color:${diffColor};font-weight:bold;">${diffStr}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+                <tfoot>
+                    <tr style="background:#f3f4f6;font-weight:bold;">
+                        <td style="padding:10px 8px;">合计</td>
+                        <td style="padding:10px 8px;">${totalTarget}</td>
+                        <td style="padding:10px 8px;color:${totalAchieved >= totalTarget ? '#16a34a' : '#dc2626'};">${totalAchieved}</td>
+                        <td style="padding:10px 8px;color:${totalAchieved - totalTarget >= 0 ? '#16a34a' : '#dc2626'};">${totalAchieved - totalTarget > 0 ? '+' : ''}${totalAchieved - totalTarget}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    `;
+    
+    document.body.appendChild(exportDiv);
+    
+    // 渲染图表
+    setTimeout(() => {
+        const labels = aggregatedData.map(r => {
+            // 将 "8:00-9:00" 转换为 "8-9"
+            const match = r.hour_slot.match(/(\d+):(\d+)-(\d+):(\d+)/);
+            if (match) {
+                return `${match[1]}-${match[3]}`;
+            }
+            return r.hour_slot;
+        });
+        const achievedData = aggregatedData.map(r => r.achieved_value);
+        const targetData = aggregatedData.map(r => r.target_value);
+        
+        const ctx = document.getElementById('exportChartCanvas').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '目标',
+                        data: targetData,
+                        type: 'line',
+                        borderColor: '#3b82f6',
+                        borderWidth: 3,
+                        borderDash: [8, 6],
+                        pointBackgroundColor: '#3b82f6',
+                        pointRadius: 5,
+                        pointBorderWidth: 0,
+                        fill: false,
+                        order: 1
+                    },
+                    {
+                        label: '达成',
+                        data: achievedData,
+                        backgroundColor: 'rgba(74, 184, 120, 0.85)',
+                        borderColor: 'rgba(74, 184, 120, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        order: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: { size: 14 }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: '数量', font: { size: 14 } },
+                        grid: { color: 'rgba(0,0,0,0.06)' }
+                    },
+                    x: {
+                        title: { display: true, text: '时段', font: { size: 14 } },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+        
+        // 等待图表渲染完成后，将Chart.js canvas转为img，再用html2canvas截图
+        setTimeout(() => {
+            const chartCanvas = document.getElementById('exportChartCanvas');
+            // 用Chart.js内置方法将canvas转为base64图片
+            const chartImg = chartCanvas.toDataURL('image/png');
+            // 将canvas替换为img标签，确保html2canvas能捕获
+            const img = document.createElement('img');
+            img.src = chartImg;
+            img.style.cssText = 'width:100%;height:350px;';
+            chartCanvas.parentNode.replaceChild(img, chartCanvas);
+            
+            // 再等一帧确保img渲染完成
+            setTimeout(() => {
+                html2canvas(exportDiv, {
+                    scale: 2,
+                    backgroundColor: '#f0f2f5',
+                    useCORS: true,
+                    logging: false
+                }).then(canvas => {
+                    const dataUrl = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.download = `看板长图_${date}.png`;
+                    link.href = dataUrl;
+                    link.click();
+                    
+                    // 清理
+                    document.body.removeChild(exportDiv);
+                    
+                    // 更新toast为成功
+                    toast.innerHTML = '✅ 看板长图导出成功！';
+                    toast.style.background = 'rgba(22, 163, 74, 0.9)';
+                    setTimeout(() => {
+                        if (toast.parentNode) document.body.removeChild(toast);
+                    }, 2000);
+                }).catch(err => {
+                    console.error('导出失败:', err);
+                    document.body.removeChild(exportDiv);
+                    toast.innerHTML = '❌ 导出失败，请重试';
+                    toast.style.background = 'rgba(220, 38, 38, 0.9)';
+                    setTimeout(() => {
+                        if (toast.parentNode) document.body.removeChild(toast);
+                    }, 2000);
+                });
+            }, 100);
+        }, 800);
+    }, 100);
+}
+
+// 导出产量达成与异常损失报告
+function exportProductionReport() {
+    const startDate = document.getElementById('report-start-date').value;
+    const endDate = document.getElementById('report-end-date').value;
+    
+    if (!startDate || !endDate) {
+        alert('请选择开始日期和结束日期');
+        return;
+    }
+    if (startDate > endDate) {
+        alert('开始日期不能晚于结束日期');
+        return;
+    }
+    
+    // 显示加载提示
+    const toast = document.createElement('div');
+    toast.id = 'report-toast';
+    toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.75);color:white;padding:20px 40px;border-radius:12px;font-size:16px;z-index:99999;text-align:center;';
+    toast.innerHTML = '⏳ 正在生成报告...';
+    document.body.appendChild(toast);
+    
+    const lines = ['SMT1线', 'SMT2线', 'SMT3线', 'SMT4线', 'SMT5线', 'SMT6线', 'SMT7线'];
+    const allSlots = [...DAY_SLOTS, ...NIGHT_SLOTS];
+    
+    // 收集日期范围内所有数据
+    const allRecords = [];
+    const dateList = [];
+    let d = new Date(startDate);
+    const endD = new Date(endDate);
+    while (d <= endD) {
+        dateList.push(d.toISOString().split('T')[0]);
+        d.setDate(d.getDate() + 1);
+    }
+    
+    for (const date of dateList) {
+        for (const line of lines) {
+            for (const slot of allSlots) {
+                const key = `record_${line}_${date}_${slot}`;
+                const record = await DataStore.getRecord(key);
+                if (record) {
+                    allRecords.push(record);
+                }
+            }
+        }
+    }
+    
+    // 按线体汇总
+    const lineStats = {};
+    const anomalyByCategory = {}; // { category: { count, affectedUnits, lossHours } }
+    const lineAnomalies = {}; // { lineName: [{ category, count, lossHours, affectedUnits, examples }] }
+    
+    let totalTarget = 0, totalAchieved = 0, totalAnomalyCount = 0, totalAffectedUnits = 0, totalLossHours = 0;
+    
+    for (const rec of allRecords) {
+        const ln = rec.line_name;
+        if (!lineStats[ln]) {
+            lineStats[ln] = { target: 0, achieved: 0, anomalies: {} };
+        }
+        lineStats[ln].target += (rec.target_value || 0);
+        lineStats[ln].achieved += (rec.achieved_value || 0);
+        
+        // 异常损失分析
+        const cat = rec.reason_category || '无异常';
+        const restMin = parseFloat(rec.rest_minutes) || 0;
+        const targetVal = rec.target_value || 0;
+        const lossH = targetVal > 0 ? (restMin / 60) : 0;
+        const affectedUnits = Math.round((restMin / 60) * targetVal);
+        
+        if (cat && cat !== '无' && cat !== '正常' && cat !== '' && restMin > 0) {
+            // 全局异常分类统计
+            if (!anomalyByCategory[cat]) {
+                anomalyByCategory[cat] = { count: 0, affectedUnits: 0, lossHours: 0 };
+            }
+            anomalyByCategory[cat].count++;
+            anomalyByCategory[cat].affectedUnits += affectedUnits;
+            anomalyByCategory[cat].lossHours += lossH;
+            
+            // 线体异常明细
+            if (!lineAnomalies[ln]) lineAnomalies[ln] = {};
+            if (!lineAnomalies[ln][cat]) {
+                lineAnomalies[ln][cat] = { count: 0, lossHours: 0, affectedUnits: 0, examples: [] };
+            }
+            lineAnomalies[ln][cat].count++;
+            lineAnomalies[ln][cat].lossHours += lossH;
+            lineAnomalies[ln][cat].affectedUnits += affectedUnits;
+            if (lineAnomalies[ln][cat].examples.length < 3) {
+                lineAnomalies[ln][cat].examples.push({
+                    date: rec.record_date,
+                    slot: rec.hour_slot,
+                    reason: rec.reason || '未填写',
+                    lossH: lossH.toFixed(2)
+                });
+            }
+            
+            totalAnomalyCount++;
+            totalAffectedUnits += affectedUnits;
+            totalLossHours += lossH;
+        }
+    }
+    
+    for (const ln in lineStats) {
+        totalTarget += lineStats[ln].target;
+        totalAchieved += lineStats[ln].achieved;
+    }
+    
+    const rate = totalTarget > 0 ? (totalAchieved / totalTarget * 100).toFixed(1) : 0;
+    const diff = totalAchieved - totalTarget;
+    const diffStr = diff > 0 ? `+${diff.toLocaleString()}` : `${diff.toLocaleString()}`;
+    const rateColor = rate >= 100 ? '#ffffff' : '#fca5a5';
+    
+    // 线体排名
+    const lineRanking = Object.entries(lineStats)
+        .map(([name, s]) => ({ name, ...s, rate: s.target > 0 ? (s.achieved / s.target * 100).toFixed(1) : 0, diff: s.achieved - s.target }))
+        .sort((a, b) => b.achieved - a.achieved);
+    
+    // 异常分类排序
+    const anomalySorted = Object.entries(anomalyByCategory)
+        .map(([cat, d]) => ({ cat, ...d, pct: totalLossHours > 0 ? (d.lossHours / totalLossHours * 100).toFixed(1) : 0 }))
+        .sort((a, b) => b.lossHours - a.lossHours);
+    
+    // 创建导出容器（使用fixed定位，不用transform，确保html2canvas能正确捕获）
+    const exportDiv = document.createElement('div');
+    exportDiv.id = 'report-export-container';
+    exportDiv.style.cssText = 'position:fixed;left:0;top:0;width:900px;background:#f0f2f5;padding:24px;font-family:Microsoft YaHei,PingFang SC,sans-serif;z-index:99999;';
+    
+    const startShort = startDate.slice(5).replace('-', '.');
+    const endShort = endDate.slice(5).replace('-', '.');
+    
+    // 构建异常分类表格行
+    const anomalyTableRows = anomalySorted.map((a, i) => {
+        const colors = ['#f87171', '#fb923c', '#facc15', '#a78bfa', '#60a5fa'];
+        const bg = colors[i % colors.length];
+        return `<tr>
+            <td style="padding:10px 8px;text-align:center;font-weight:bold;color:white;background:${bg};">${a.cat}</td>
+            <td style="padding:10px 8px;text-align:center;background:${bg};opacity:0.9;">${a.count}</td>
+            <td style="padding:10px 8px;text-align:center;background:${bg};opacity:0.9;">${a.affectedUnits}</td>
+            <td style="padding:10px 8px;text-align:center;background:${bg};opacity:0.9;">${a.lossHours.toFixed(2)}h</td>
+            <td style="padding:10px 8px;text-align:center;background:${bg};opacity:0.9;">${a.pct}%</td>
+        </tr>`;
+    }).join('');
+    
+    // 构建线体明细表
+    const lineTableRows = lineRanking.map((l, i) => {
+        const rateC = l.rate >= 100 ? '#16a34a' : '#dc2626';
+        const diffC = l.diff >= 0 ? '#16a34a' : '#dc2626';
+        const diffBg = l.diff < 0 ? '#fef2f2' : (l.diff > 0 ? '#f0fdf4' : 'transparent');
+        const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : `${i + 1}`));
+        return `<tr>
+            <td style="padding:10px 8px;text-align:center;font-size:18px;">${medal}</td>
+            <td style="padding:10px 8px;font-weight:bold;">${l.name}</td>
+            <td style="padding:10px 8px;text-align:right;">${l.target.toLocaleString()}</td>
+            <td style="padding:10px 8px;text-align:right;">${l.achieved.toLocaleString()}</td>
+            <td style="padding:10px 8px;text-align:right;color:${rateC};font-weight:bold;">${l.rate}%</td>
+            <td style="padding:10px 8px;text-align:right;color:${diffC};font-weight:bold;background:${diffBg};">${l.diff > 0 ? '+' : ''}${l.diff.toLocaleString()}</td>
+        </tr>`;
+    }).join('');
+    
+    // 构建各线体重点异常分析
+    const lineAnomalySections = Object.entries(lineAnomalies).map(([ln, cats]) => {
+        const totalLineLoss = Object.values(cats).reduce((s, c) => s + c.lossHours, 0);
+        const catEntries = Object.entries(cats).sort((a, b) => b[1].lossHours - a[1].lossHours);
+        const items = catEntries.map(([cat, d], idx) => {
+            const pct = totalLineLoss > 0 ? (d.lossHours / totalLineLoss * 100).toFixed(1) : 0;
+            const examples = d.examples.map(e => `典型：${e.date} ${e.slot} - ${e.reason} 损失${e.lossH}小时`).join('<br>');
+            return `<div style="margin-bottom:12px;">
+                <div style="font-size:15px;font-weight:bold;color:#1f2937;">${idx + 1}. ${cat}：${d.count}次，损失${d.lossHours.toFixed(2)}小时（占比${pct}%）</div>
+                <div style="font-size:13px;color:#6b7280;margin-left:16px;margin-top:4px;">${examples}</div>
+            </div>`;
+        }).join('');
+        return `<div style="background:white;border-radius:12px;padding:20px;margin-bottom:12px;">
+            <div style="font-size:18px;font-weight:bold;color:#1f2937;margin-bottom:12px;">${ln}：总损失${totalLineLoss.toFixed(2)}小时</div>
+            ${items}
+        </div>`;
+    }).join('');
+    
+    exportDiv.innerHTML = `
+        <!-- 标题 -->
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="font-size:26px;font-weight:bold;color:#1f2937;">电子车间${startShort}至${endShort}产量达成与异常损失报告</div>
+        </div>
+        
+        <!-- 汇总横幅 -->
+        <div style="background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:12px;padding:20px;margin-bottom:20px;text-align:center;color:white;">
+            <div style="font-size:20px;font-weight:bold;margin-bottom:8px;">
+                有效目标: ${totalTarget.toLocaleString()}台 | 有效达成: ${totalAchieved.toLocaleString()}台 | 达成率: ${rate}% | 超产/欠产: ${diffStr}台
+            </div>
+            <div style="font-size:14px;opacity:0.9;">
+                异常${totalAnomalyCount}次 | 影响${totalAffectedUnits}台 | 损失${totalLossHours.toFixed(2)}小时
+            </div>
+        </div>
+        
+        <!-- 两栏布局 -->
+        <div style="display:flex;gap:16px;margin-bottom:20px;">
+            <!-- 左栏：各线体产量达成情况 -->
+            <div style="flex:1;">
+                <div style="font-size:16px;font-weight:bold;color:#1f2937;margin-bottom:12px;">各线体产量达成情况</div>
+                <div style="background:white;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                        <thead>
+                            <tr style="background:#3b82f6;color:white;">
+                                <th style="padding:10px 8px;">排名</th>
+                                <th style="padding:10px 8px;">线体</th>
+                                <th style="padding:10px 8px;">目标</th>
+                                <th style="padding:10px 8px;">达成</th>
+                                <th style="padding:10px 8px;">达成率</th>
+                                <th style="padding:10px 8px;">超产/欠产</th>
+                            </tr>
+                        </thead>
+                        <tbody>${lineTableRows}</tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 右栏：异常分类损失工时统计 -->
+            <div style="flex:1;">
+                <div style="font-size:16px;font-weight:bold;color:#1f2937;margin-bottom:12px;">异常分类损失工时统计</div>
+                <div style="background:white;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                        <thead>
+                            <tr style="background:#3b82f6;color:white;">
+                                <th style="padding:10px 8px;">异常类别</th>
+                                <th style="padding:10px 8px;">次数</th>
+                                <th style="padding:10px 8px;">影响台数</th>
+                                <th style="padding:10px 8px;">损失工时</th>
+                                <th style="padding:10px 8px;">占比</th>
+                            </tr>
+                        </thead>
+                        <tbody>${anomalyTableRows || '<tr><td colspan="5" style="padding:20px;text-align:center;color:#9ca3af;">暂无异常数据</td></tr>'}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 各线体重点异常分析 -->
+        <div style="font-size:18px;font-weight:bold;color:#1f2937;margin-bottom:12px;">📋 各线体重点异常分析</div>
+        ${lineAnomalySections || '<div style="background:white;border-radius:12px;padding:20px;text-align:center;color:#9ca3af;">暂无异常数据</div>'}
+        
+        <!-- 底部说明 -->
+        <div style="text-align:center;margin-top:16px;font-size:13px;color:#9ca3af;">
+            损失工时计算：影响台数 / 目标值 × 1小时 | 产能目标已剔除返工/试制试产/支援，异常分析包含所有类别<br>
+            - 产线小时达成录入系统 -
+        </div>
+    `;
+    
+    document.body.appendChild(exportDiv);
+    
+    // 用html2canvas截图
+    setTimeout(() => {
+        html2canvas(exportDiv, {
+            scale: 2,
+            backgroundColor: '#f0f2f5',
+            useCORS: true,
+            logging: false
+        }).then(canvas => {
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `产量达成与异常损失报告_${startDate}_至_${endDate}.png`;
+            link.href = dataUrl;
+            link.click();
+            
+            document.body.removeChild(exportDiv);
+            
+            toast.innerHTML = '✅ 报告导出成功！';
+            toast.style.background = 'rgba(22, 163, 74, 0.9)';
+            setTimeout(() => {
+                if (toast.parentNode) document.body.removeChild(toast);
+            }, 2000);
+        }).catch(err => {
+            console.error('导出失败:', err);
+            document.body.removeChild(exportDiv);
+            toast.innerHTML = '❌ 导出失败，请重试';
+            toast.style.background = 'rgba(220, 38, 38, 0.9)';
+            setTimeout(() => {
+                if (toast.parentNode) document.body.removeChild(toast);
+            }, 2000);
+        });
+    }, 500);
+}
+
+// 渲染单线柱状图
+function renderLineChart(chartId, lineData) {
+    const canvas = document.getElementById(chartId);
+    if (!canvas) return;
+    
+    const labels = lineData.map(r => {
+        // 将 "8:00-9:00" 转换为 "8-9"
+        const match = r.hour_slot.match(/(\d+):(\d+)-(\d+):(\d+)/);
+        if (match) {
+            return `${match[1]}-${match[3]}`;
+        }
+        return r.hour_slot;
+    });
+    const achievedData = lineData.map(r => r.achieved_value);
+    const targetData = lineData.map(r => r.target_value);
+    
+    // 检测同一小时内是否有多个型号（用于绘制分隔线）
+    const hourGroups = {};
+    lineData.forEach((r, idx) => {
+        // 提取小时部分（如"10:00-10:20"提取为"10:00"）
+        const hourKey = r.hour_slot.split('-')[0].substring(0, 5);
+        if (!hourGroups[hourKey]) {
+            hourGroups[hourKey] = [];
+        }
+        hourGroups[hourKey].push(idx);
+    });
+    
+    // 找出有多个型号的小时
+    const separatorLines = [];
+    Object.values(hourGroups).forEach(indices => {
+        if (indices.length > 1) {
+            // 在每两个相邻型号之间添加分隔线
+            for (let i = 0; i < indices.length - 1; i++) {
+                separatorLines.push((indices[i] + indices[i + 1]) / 2);
+            }
+        }
+    });
+    
+    new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '达成',
+                    data: achievedData,
+                    backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                    borderColor: 'rgba(34, 197, 94, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    order: 2
+                },
+                {
+                    label: '目标',
+                    data: targetData,
+                    type: 'line',
+                    borderColor: '#2563eb',
+                    borderWidth: 3,
+                    borderDash: [8, 6],
+                    stepped: 'middle',
+                    pointRadius: 0,
+                    fill: false,
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    left: 5,
+                    right: 5,
+                    top: 5,
+                    bottom: 5
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 10,
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        afterBody: function(context) {
+                            const idx = context[0].dataIndex;
+                            return `型号: ${lineData[idx].smt_code}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 10
+                        }
+                    }
+                },
+                x: {
+                    title: {
+                        display: false
+                    },
+                    ticks: {
+                        maxRotation: 90,
+                        minRotation: 45,
+                        font: {
+                            size: 10
+                        },
+                        autoSkip: false
+                    }
+                }
+            }
+        },
+        plugins: [{
+            id: 'separatorLines',
+            afterDraw: function(chart) {
+                if (separatorLines.length === 0) return;
+                
+                const ctx = chart.ctx;
+                const xAxis = chart.scales.x;
+                const yAxis = chart.scales.y;
+                
+                ctx.save();
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([]);
+                
+                separatorLines.forEach(pos => {
+                    const x = xAxis.getPixelForValue(pos);
+                    ctx.beginPath();
+                    ctx.moveTo(x, yAxis.top);
+                    ctx.lineTo(x, yAxis.bottom);
+                    ctx.stroke();
+                });
+                
+                ctx.restore();
+            }
+        }]
+    });
+}
+
+// ========== 管理后台功能 ==========
+
+function updateStats() {
+    const values = Object.values(SMT_CODES);
+    document.getElementById('total-count').textContent = values.length;
+    document.getElementById('avg-uph').textContent = values.length > 0 ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
+    document.getElementById('max-uph').textContent = values.length > 0 ? Math.max(...values) : 0;
+    document.getElementById('min-uph').textContent = values.length > 0 ? Math.min(...values) : 0;
+}
+
+function renderTable() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    let codes = Object.entries(SMT_CODES);
+    
+    if (search) {
+        codes = codes.filter(([code]) => code.toLowerCase().includes(search));
+    }
+    
+    codes.sort((a, b) => a[0].localeCompare(b[0]));
+    
+    const totalPages = Math.ceil(codes.length / pageSize);
+    const start = (currentPage - 1) * pageSize;
+    const pageCodes = codes.slice(start, start + pageSize);
+    
+    const tbody = document.getElementById('code-table');
+    tbody.innerHTML = pageCodes.map(([code, uph], index) => `
+        <tr>
+            <td>${start + index + 1}</td>
+            <td>${code}</td>
+            <td>${uph}</td>
+            <td>
+                <button class="btn btn-danger" style="padding:5px 10px;font-size:12px;" onclick="deleteCode('${code}')">删除</button>
+            </td>
+        </tr>
+    `).join('');
+    
+    const pagination = document.getElementById('pagination');
+    let paginationHtml = '';
+    
+    if (totalPages > 1) {
+        paginationHtml += `<button onclick="changePage(1)" ${currentPage === 1 ? 'disabled' : ''}>首页</button>`;
+        paginationHtml += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>`;
+        
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, currentPage + 2);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHtml += `<button onclick="changePage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+        }
+        
+        paginationHtml += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>`;
+        paginationHtml += `<button onclick="changePage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>末页</button>`;
+    }
+    
+    pagination.innerHTML = paginationHtml;
+}
+
+function changePage(page) {
+    const codes = Object.keys(SMT_CODES);
+    const totalPages = Math.ceil(codes.length / pageSize);
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    renderTable();
+}
+
+function addCode() {
+    const code = document.getElementById('new-code').value.trim();
+    const uph = parseInt(document.getElementById('new-uph').value);
+    
+    if (!code) {
+        alert('请输入SMT编码');
+        return;
+    }
+    
+    if (isNaN(uph) || uph < 0) {
+        alert('请输入有效的UPH值');
+        return;
+    }
+    
+    const isNew = !SMT_CODES[code];
+    SMT_CODES[code] = uph;
+    saveSmtCodes();
+    renderTable();
+    
+    document.getElementById('new-code').value = '';
+    document.getElementById('new-uph').value = '';
+    
+    alert(`已${isNew ? '添加' : '更新'}: ${code} -> ${uph}`);
+}
+
+function deleteCode(code) {
+    if (!confirm(`确定要删除 ${code} 吗？`)) return;
+    
+    delete SMT_CODES[code];
+    saveSmtCodes();
+    renderTable();
+}
+
+function importData() {
+    const data = document.getElementById('import-data').value.trim();
+    
+    if (!data) {
+        alert('请粘贴JSON数据');
+        return;
+    }
+    
+    try {
+        const parsed = JSON.parse(data);
+        
+        if (!Array.isArray(parsed)) {
+            alert('数据格式错误，应为数组');
+            return;
+        }
+        
+        let count = 0;
+        for (const item of parsed) {
+            if (item['smt编码'] && item['UPH'] !== undefined) {
+                SMT_CODES[item['smt编码']] = Math.round(item['UPH']);
+                count++;
+            }
+        }
+        
+        saveSmtCodes();
+        renderTable();
+        
+        document.getElementById('import-data').value = '';
+        alert(`成功导入 ${count} 条数据！`);
+    } catch (e) {
+        alert('JSON解析失败: ' + e.message);
+    }
+}
+
+function exportData() {
+    const data = Object.entries(SMT_CODES).map(([code, uph]) => ({
+        'smt编码': code,
+        'UPH': uph
+    }));
+    
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `smt_codes_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+}
+
+function clearAllData() {
+    if (!confirm('确定要清空所有SMT编码数据吗？此操作不可恢复！')) return;
+    if (!confirm('再次确认：清空所有数据？')) return;
+    
+    SMT_CODES = {};
+    saveSmtCodes();
+    renderTable();
+    alert('已清空所有数据');
+}
+
+function resetToDefault() {
+    if (!confirm('确定要恢复默认数据吗？当前数据将被覆盖！')) return;
+    
+    SMT_CODES = {...DEFAULT_SMT_CODES};
+    saveSmtCodes();
+    renderTable();
+    alert('已恢复默认数据（770条）');
+}
+</script>
+</body>
+</html>
