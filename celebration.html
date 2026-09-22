@@ -155,6 +155,11 @@
     padding: 20px;
     color: #666;
   }
+  .auto-fill-hint {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+  }
 </style>
 </head>
 <body>
@@ -167,9 +172,6 @@
       <label>车间 *</label>
       <select id="workshop" required>
         <option value="">请选择车间</option>
-        <option value="部品分厂">部品分厂</option>
-        <option value="地刷车间">地刷车间</option>
-        <option value="水箱车间">水箱车间</option>
       </select>
     </div>
     
@@ -178,6 +180,7 @@
       <select id="lineName" required>
         <option value="">请选择线体</option>
       </select>
+      <div class="auto-fill-hint" id="autoFillHint"></div>
     </div>
     
     <div class="form-group">
@@ -244,26 +247,90 @@
   const SUPABASE_URL = 'https://jtcoqlpxdubcmdpawyiu.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_g9LTQJUkOYi2F0AU8wmPbw_Gb-kxdI_';
   
-  // 线体配置
-  const LINE_CONFIG = {
-    '部品分厂': ['地刷1线', '地刷2线', '充电座线', '水箱1线', '水箱2线'],
-    '地刷车间': ['地刷1线', '地刷2线'],
-    '水箱车间': ['水箱1线', '水箱2线', '充电座线']
-  };
+  let lineConfigs = [];
   
-  // 车间联动
+  // 加载线体配置
+  async function loadLineConfigs() {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/line_configs?is_active=eq.true&order=workshop,line_name`, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('加载配置失败');
+      
+      lineConfigs = await response.json();
+      renderWorkshopOptions();
+    } catch (error) {
+      console.error(error);
+      alert('加载线体配置失败，请刷新重试');
+    }
+  }
+  
+  // 渲染车间选项
+  function renderWorkshopOptions() {
+    const workshopSelect = document.getElementById('workshop');
+    const workshops = [...new Set(lineConfigs.map(c => c.workshop))];
+    
+    workshopSelect.innerHTML = '<option value="">请选择车间</option>';
+    workshops.forEach(ws => {
+      const option = document.createElement('option');
+      option.value = ws;
+      option.textContent = ws;
+      workshopSelect.appendChild(option);
+    });
+  }
+  
+  // 车间联动线体
   document.getElementById('workshop').addEventListener('change', function() {
     const workshop = this.value;
     const lineSelect = document.getElementById('lineName');
     lineSelect.innerHTML = '<option value="">请选择线体</option>';
     
-    if (workshop && LINE_CONFIG[workshop]) {
-      LINE_CONFIG[workshop].forEach(line => {
+    if (workshop) {
+      const lines = lineConfigs.filter(c => c.workshop === workshop);
+      lines.forEach(line => {
         const option = document.createElement('option');
-        option.value = line;
-        option.textContent = line;
+        option.value = line.line_name;
+        option.textContent = line.line_name;
+        option.dataset.leader = line.leader || '';
+        option.dataset.engineer = line.engineer || '';
+        option.dataset.inspector = line.inspector || '';
         lineSelect.appendChild(option);
       });
+    }
+    
+    // 清空铁三角
+    document.getElementById('leader').value = '';
+    document.getElementById('engineer').value = '';
+    document.getElementById('inspector').value = '';
+    document.getElementById('autoFillHint').textContent = '';
+  });
+  
+  // 线体联动铁三角
+  document.getElementById('lineName').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const leader = selectedOption.dataset.leader;
+    const engineer = selectedOption.dataset.engineer;
+    const inspector = selectedOption.dataset.inspector;
+    
+    if (leader) {
+      document.getElementById('leader').value = leader;
+    }
+    if (engineer) {
+      document.getElementById('engineer').value = engineer;
+    }
+    if (inspector) {
+      document.getElementById('inspector').value = inspector;
+    }
+    
+    // 显示提示
+    if (leader || engineer || inspector) {
+      document.getElementById('autoFillHint').textContent = '✓ 已自动填充铁三角信息';
+    } else {
+      document.getElementById('autoFillHint').textContent = '';
     }
   });
   
@@ -356,6 +423,7 @@
       // 重置表单
       this.reset();
       document.getElementById('breakthroughDate').valueAsDate = new Date();
+      document.getElementById('autoFillHint').textContent = '';
       
       // 重新加载历史
       loadHistory();
@@ -376,7 +444,8 @@
     }
   });
   
-  // 页面加载时加载历史
+  // 页面加载
+  loadLineConfigs();
   loadHistory();
 </script>
 </body>
