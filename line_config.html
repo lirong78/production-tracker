@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>线体配置管理</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 28px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+    font-size: 14px;
+  }
+  .btn-add {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 15px;
+    cursor: pointer;
+    margin-bottom: 20px;
+  }
+  .btn-add:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102,126,234,0.4);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #555;
+  }
+  tr:hover {
+    background: #f8f9fa;
+  }
+  .btn-edit, .btn-delete {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    margin-right: 4px;
+  }
+  .btn-edit {
+    background: #1890ff;
+    color: white;
+  }
+  .btn-delete {
+    background: #ff4d4f;
+    color: white;
+  }
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal.show {
+    display: flex;
+  }
+  .modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    width: 90%;
+    max-width: 500px;
+  }
+  .modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  .form-group {
+    margin-bottom: 16px;
+  }
+  label {
+    display: block;
+    margin-bottom: 6px;
+    color: #555;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  input {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  input:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+  .btn-save, .btn-cancel {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 10px;
+  }
+  .btn-save {
+    background: #667eea;
+    color: white;
+  }
+  .btn-cancel {
+    background: #e0e0e0;
+    color: #666;
+  }
+  .message {
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 16px;
+    text-align: center;
+    font-size: 14px;
+    display: none;
+  }
+  .message.success {
+    background: #d4edda;
+    color: #155724;
+  }
+  .message.error {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  .status-active {
+    color: #52c41a;
+    font-weight: 600;
+  }
+  .status-inactive {
+    color: #999;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>⚙️ 线体配置管理</h1>
+  <p class="subtitle">管理车间、线体和铁三角信息</p>
+  
+  <button class="btn-add" onclick="openAddModal()">+ 添加线体</button>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>车间</th>
+        <th>线体</th>
+        <th>班长</th>
+        <th>工艺</th>
+        <th>巡检</th>
+        <th>状态</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="configList">
+      <tr><td colspan="7" style="text-align:center;padding:40px;color:#999;">加载中...</td></tr>
+    </tbody>
+  </table>
+  
+  <div id="message" class="message"></div>
+</div>
+
+<!-- 添加/编辑弹窗 -->
+<div id="modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-title" id="modalTitle">添加线体</div>
+    <form id="configForm">
+      <input type="hidden" id="configId">
+      <div class="form-group">
+        <label>车间 *</label>
+        <input type="text" id="workshop" required placeholder="如：部品分厂">
+      </div>
+      <div class="form-group">
+        <label>线体 *</label>
+        <input type="text" id="lineName" required placeholder="如：地刷1线">
+      </div>
+      <div class="form-group">
+        <label>班长</label>
+        <input type="text" id="leader" placeholder="班长姓名">
+      </div>
+      <div class="form-group">
+        <label>工艺</label>
+        <input type="text" id="engineer" placeholder="工艺姓名">
+      </div>
+      <div class="form-group">
+        <label>巡检</label>
+        <input type="text" id="inspector" placeholder="巡检姓名">
+      </div>
+      <div style="margin-top:20px;">
+        <button type="submit" class="btn-save">保存</button>
+        <button type="button" class="btn-cancel" onclick="closeModal()">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://jtcoqlpxdubcmdpawyiu.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_g9LTQJUkOYi2F0AU8wmPbw_Gb-kxdI_';
+  
+  async function loadConfigs() {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/line_configs?order=workshop,line_name`, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('加载失败');
+      
+      const data = await response.json();
+      renderConfigs(data);
+    } catch (error) {
+      document.getElementById('configList').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#f5222d;">加载失败，请刷新重试</td></tr>';
+      console.error(error);
+    }
+  }
+  
+  function renderConfigs(data) {
+    const tbody = document.getElementById('configList');
+    
+    if (data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#999;">暂无配置，点击"添加线体"开始</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = data.map(item => `
+      <tr>
+        <td>${item.workshop}</td>
+        <td>${item.line_name}</td>
+        <td>${item.leader || '-'}</td>
+        <td>${item.engineer || '-'}</td>
+        <td>${item.inspector || '-'}</td>
+        <td class="${item.is_active ? 'status-active' : 'status-inactive'}">${item.is_active ? '启用' : '停用'}</td>
+        <td>
+          <button class="btn-edit" onclick='openEditModal(${JSON.stringify(item)})'>编辑</button>
+          <button class="btn-delete" onclick="deleteConfig(${item.id})">删除</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+  
+  function openAddModal() {
+    document.getElementById('modalTitle').textContent = '添加线体';
+    document.getElementById('configId').value = '';
+    document.getElementById('configForm').reset();
+    document.getElementById('modal').classList.add('show');
+  }
+  
+  function openEditModal(item) {
+    document.getElementById('modalTitle').textContent = '编辑线体';
+    document.getElementById('configId').value = item.id;
+    document.getElementById('workshop').value = item.workshop;
+    document.getElementById('lineName').value = item.line_name;
+    document.getElementById('leader').value = item.leader || '';
+    document.getElementById('engineer').value = item.engineer || '';
+    document.getElementById('inspector').value = item.inspector || '';
+    document.getElementById('modal').classList.add('show');
+  }
+  
+  function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+  }
+  
+  document.getElementById('configForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('configId').value;
+    const data = {
+      workshop: document.getElementById('workshop').value,
+      line_name: document.getElementById('lineName').value,
+      leader: document.getElementById('leader').value || null,
+      engineer: document.getElementById('engineer').value || null,
+      inspector: document.getElementById('inspector').value || null
+    };
+    
+    try {
+      let response;
+      if (id) {
+        // 更新
+        response = await fetch(`${SUPABASE_URL}/rest/v1/line_configs?id=eq.${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          },
+          body: JSON.stringify(data)
+        });
+      } else {
+        // 新增
+        response = await fetch(`${SUPABASE_URL}/rest/v1/line_configs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`
+          },
+          body: JSON.stringify(data)
+        });
+      }
+      
+      if (!response.ok) throw new Error('保存失败');
+      
+      showMessage('保存成功！', 'success');
+      closeModal();
+      loadConfigs();
+    } catch (error) {
+      showMessage('保存失败：' + error.message, 'error');
+      console.error(error);
+    }
+  });
+  
+  async function deleteConfig(id) {
+    if (!confirm('确定要删除这条配置吗？')) return;
+    
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/line_configs?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('删除失败');
+      
+      showMessage('删除成功！', 'success');
+      loadConfigs();
+    } catch (error) {
+      showMessage('删除失败：' + error.message, 'error');
+      console.error(error);
+    }
+  }
+  
+  function showMessage(text, type) {
+    const msg = document.getElementById('message');
+    msg.textContent = text;
+    msg.className = 'message ' + type;
+    msg.style.display = 'block';
+    setTimeout(() => {
+      msg.style.display = 'none';
+    }, 3000);
+  }
+  
+  // 点击弹窗外部关闭
+  document.getElementById('modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeModal();
+    }
+  });
+  
+  // 页面加载
+  loadConfigs();
+</script>
+</body>
+</html>
