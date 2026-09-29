@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>地刷车间产能达成看板</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { 
@@ -56,12 +55,10 @@ body {
     cursor: pointer;
     transition: all 0.2s;
 }
-.date-picker input[type="date"]:hover {
-    border-color: #1a237e;
-}
+.date-picker input[type="date"]:hover,
 .date-picker input[type="date"]:focus {
-    outline: none;
     border-color: #1a237e;
+    outline: none;
     box-shadow: 0 0 0 3px rgba(26, 35, 126, 0.1);
 }
 .btn-today {
@@ -75,9 +72,7 @@ body {
     cursor: pointer;
     transition: all 0.2s;
 }
-.btn-today:hover {
-    background: #283593;
-}
+.btn-today:hover { background: #283593; }
 .subtitle {
     text-align: center;
     font-size: 15px;
@@ -119,15 +114,6 @@ body {
     padding: 60px;
     color: #888;
     font-size: 16px;
-}
-.loading::after {
-    content: "...";
-    animation: dots 1.5s infinite;
-}
-@keyframes dots {
-    0%, 20% { content: "."; }
-    40% { content: ".."; }
-    60%, 100% { content: "..."; }
 }
 table {
     width: 100%;
@@ -275,6 +261,14 @@ td {
     color: #888;
     font-size: 15px;
 }
+.error-box {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    color: #856404;
+}
 </style>
 </head>
 <body>
@@ -289,14 +283,13 @@ td {
     </div>
     
     <div id="content">
-        <div class="loading">加载中</div>
+        <div class="loading">加载中...</div>
     </div>
 </div>
 
 <script>
 const SUPABASE_URL = 'https://jtcoqlpxdubcmdpawyiu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_g9LTQJUkOYi2F0AU8wmPbw_Gb-kxdI_';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const TIME_SLOTS = [
     '8:00~9:00', '9:00~10:00', '10:00~11:00', '11:00~12:00',
@@ -347,21 +340,34 @@ function formatDate(dateStr) {
 
 // 加载数据
 async function loadData(dateStr) {
-    document.getElementById('content').innerHTML = '<div class="loading">加载中</div>';
+    document.getElementById('content').innerHTML = '<div class="loading">加载中...</div>';
     
     try {
-        const { data, error } = await supabase
-            .from('production_records')
-            .select('*')
-            .eq('record_date', dateStr)
-            .order('line_name')
-            .order('hour_slot');
+        const url = `${SUPABASE_URL}/rest/v1/production_records?record_date=eq.${dateStr}&order=line_name,hour_slot`;
+        const response = await fetch(url, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
         
-        if (error) throw error;
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         
-        renderDashboard(dateStr, data || []);
+        const records = await response.json();
+        console.log('Data loaded:', records.length, 'records');
+        
+        renderDashboard(dateStr, records);
     } catch (err) {
-        document.getElementById('content').innerHTML = `<div class="no-data">加载失败：${err.message}</div>`;
+        console.error('Load error:', err);
+        document.getElementById('content').innerHTML = `
+            <div class="error-box">
+                <strong>加载失败</strong><br>
+                错误信息: ${err.message}<br>
+                请检查网络连接或刷新页面重试
+            </div>
+        `;
     }
 }
 
@@ -509,8 +515,6 @@ function renderDashboard(dateStr, records) {
         });
         
         const rateClass = line.rate >= 100 ? 'rate-high' : (line.rate >= 90 ? 'rate-mid' : 'rate-low');
-        const lineDiff = line.totalAchieved - line.totalTarget;
-        const lineDiffStr = lineDiff >= 0 ? `+${lineDiff}` : `${lineDiff}`;
         
         html += `<td class="summary-cell">
             <div class="summary-total">${line.totalAchieved}</div>
