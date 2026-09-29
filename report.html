@@ -169,13 +169,15 @@ body {
 <div class="container">
     <div class="header">
         <h1>📊 产量达成及异常分析报告</h1>
-        <p>选择日期生成分析报告</p>
+        <p>选择日期范围生成分析报告</p>
     </div>
     
     <div class="date-section">
-        <label>选择报告日期</label>
+        <label>选择报告日期范围</label>
         <div class="date-input-wrapper">
-            <input type="date" id="reportDate">
+            <input type="date" id="startDate">
+            <span style="color:#666;font-weight:500;">至</span>
+            <input type="date" id="endDate">
             <button class="btn btn-primary" id="generateBtn" onclick="generateReport()">生成报告</button>
         </div>
     </div>
@@ -215,16 +217,20 @@ const LINES = [
 // 不计入目标的异常类别
 const NON_TARGET_CATEGORIES = ['试制试产', '返工', '支援'];
 
-// 设置默认日期为今天
+// 设置默认日期范围为最近7天
 document.addEventListener('DOMContentLoaded', function() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('reportDate').value = today;
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 6);
+    
+    document.getElementById('startDate').value = sevenDaysAgo.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
 });
 
 let currentReportHtml = '';
 
-async function fetchData(dateStr) {
-    const url = `${SUPABASE_URL}/rest/v1/production_records?record_date=eq.${dateStr}&select=*&order=line_name,hour_slot`;
+async function fetchData(startDate, endDate) {
+    const url = `${SUPABASE_URL}/rest/v1/production_records?record_date=gte.${startDate}&record_date=lte.${endDate}&select=*&order=line_name,record_date,hour_slot`;
     const response = await fetch(url, {
         headers: {
             'apikey': SUPABASE_KEY,
@@ -238,7 +244,7 @@ function isInternal(dept) {
     return dept && dept.includes('部品');
 }
 
-function analyzeData(data, dateStr) {
+function analyzeData(data, startDate, endDate) {
     const lineStats = {};
     const allExceptions = [];
     
@@ -266,7 +272,8 @@ function analyzeData(data, dateStr) {
         let totalTarget = 0;
         let totalAchieved = 0;
         const lineExceptions = [];
-        const exceptionHours = new Set();
+        const exceptionDates = new Set();
+        const allDates = new Set();
         
         for (const d of lineData) {
             const reasonCat = d.reason_category || '';
@@ -277,6 +284,8 @@ function analyzeData(data, dateStr) {
             }
             totalAchieved += d.achieved_value || 0;
             
+            if (d.record_date) allDates.add(d.record_date);
+            
             if (reasonCat && reasonCat !== '其他' && reasonCat !== '') {
                 const target = d.target_value || 0;
                 const achieved = d.achieved_value || 0;
@@ -285,10 +294,10 @@ function analyzeData(data, dateStr) {
                 const dept = d.responsible_dept || '';
                 const isInternalException = isInternal(dept);
                 
-                exceptionHours.add(d.hour_slot || '');
+                if (d.record_date) exceptionDates.add(d.record_date);
                 
                 const exception = {
-                    date: dateStr,
+                    date: d.record_date || '',
                     line: lineInfo.short,
                     leader: lineInfo.leader,
                     hour: d.hour_slot || '',
@@ -307,15 +316,18 @@ function analyzeData(data, dateStr) {
             }
         }
         
-        const hours = lineData.filter(d => d.hour_slot).sort((a, b) => (a.hour_slot || '').localeCompare(b.hour_slot || ''));
-        let startTime = '--', endTime = '--', duration = 0;
+        // Calculate production days and time range
+        const productionDays = allDates.size;
+        const avgHoursPerDay = productionDays > 0 ? (lineData.length / productionDays) : 0;
         
-        if (hours.length > 0) {
-            const firstSlot = hours[0].hour_slot || '';
-            const lastSlot = hours[hours.length - 1].hour_slot || '';
+        // Get typical start/end time from first date's data
+        const firstDateData = lineData.filter(d => d.record_date === startDate).sort((a, b) => (a.hour_slot || '').localeCompare(b.hour_slot || ''));
+        let startTime = '--', endTime = '--';
+        if (firstDateData.length > 0) {
+            const firstSlot = firstDateData[0].hour_slot || '';
+            const lastSlot = firstDateData[firstDateData.length - 1].hour_slot || '';
             startTime = firstSlot.includes('~') ? firstSlot.split('~')[0] : firstSlot.split('-')[0];
             endTime = lastSlot.includes('~') ? lastSlot.split('~')[1] : lastSlot.split('-')[1];
-            duration = hours.length;
         }
         
         const diff = totalAchieved - totalTarget;
@@ -328,19 +340,19 @@ function analyzeData(data, dateStr) {
             achieved: totalAchieved,
             diff: diff,
             rate: rate,
-            duration: duration,
+            duration: productionDays,
             start_time: startTime,
             end_time: endTime,
             records: lineData,
             exceptions: lineExceptions,
-            exception_days: exceptionHours.size
+            exception_days: exceptionDates.size
         };
     }
     
     return { lineStats, allExceptions };
 }
 
-function generateReportHtml(dateStr, lineStats, allExceptions) {
+function generateReportHtml(dateRange, lineStats, allExceptions) {
     const ranked = Object.entries(lineStats).sort((a, b) => b[1].rate - a[1].rate);
     
     const totalTarget = Object.values(lineStats).reduce((sum, s) => sum + s.target, 0);
@@ -408,7 +420,7 @@ function generateReportHtml(dateStr, lineStats, allExceptions) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>产量达成及异常分析报告 - ${dateStr}</title>
+<title>产量达成及异常分析报告 - ${dateRange}</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Microsoft YaHei', sans-serif; background: #f5f5f5; padding: 20px; line-height: 1.6; }
@@ -459,7 +471,7 @@ tr:hover { background: #f9f9f9; }
 <body>
 <div class="container">
 <h1>📊 产量达成及异常分析报告</h1>
-<p class="subtitle">${dateStr} | 地刷车间</p>
+<p class="subtitle">${dateRange} | 地刷车间</p>
 
 <h2>一、生产概览</h2>
 <div class="overview-cards">
@@ -532,12 +544,12 @@ tr:hover { background: #f9f9f9; }
 <tr>
 <th>排名</th>
 <th>线体</th>
-<th>生产时长</th>
+<th>生产天数</th>
 <th>累计排产</th>
 <th>累计达成</th>
 <th>综合达成率</th>
 <th>累计欠产</th>
-<th>异常时段数</th>
+<th>异常天数</th>
 </tr>
 </thead>
 <tbody>`;
@@ -552,7 +564,7 @@ tr:hover { background: #f9f9f9; }
 <tr>
 <td><span class="rank ${rankClass}">${i+1}</span></td>
 <td><strong>${s.short}</strong><br><small style="color:#666">班长：${s.leader}</small></td>
-<td>${s.duration}h<br><small>${s.start_time}~${s.end_time}</small></td>
+<td>${s.duration}天<br><small>日均${s.start_time}~${s.end_time}</small></td>
 <td>${s.target.toLocaleString()}</td>
 <td>${s.achieved.toLocaleString()}</td>
 <td class="${rateClass}">${s.rate.toFixed(1)}%</td>
@@ -874,9 +886,16 @@ tr:hover { background: #f9f9f9; }
 }
 
 async function generateReport() {
-    const dateStr = document.getElementById('reportDate').value;
-    if (!dateStr) {
-        alert('请选择日期');
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (!startDate || !endDate) {
+        alert('请选择开始和结束日期');
+        return;
+    }
+    
+    if (startDate > endDate) {
+        alert('开始日期不能晚于结束日期');
         return;
     }
     
@@ -895,20 +914,21 @@ async function generateReport() {
     
     try {
         // 获取数据
-        const data = await fetchData(dateStr);
+        const data = await fetchData(startDate, endDate);
         
         if (!data || data.length === 0) {
             statusBox.className = 'status-box error';
-            statusBox.innerHTML = '❌ 该日期暂无数据';
+            statusBox.innerHTML = '❌ 该日期范围暂无数据';
             generateBtn.disabled = false;
             return;
         }
         
         // 分析数据
-        const { lineStats, allExceptions } = analyzeData(data, dateStr);
+        const { lineStats, allExceptions } = analyzeData(data, startDate, endDate);
         
         // 生成报告
-        currentReportHtml = generateReportHtml(dateStr, lineStats, allExceptions);
+        const dateRange = startDate === endDate ? startDate : `${startDate} 至 ${endDate}`;
+        currentReportHtml = generateReportHtml(dateRange, lineStats, allExceptions);
         
         // 显示预览
         const blob = new Blob([currentReportHtml], { type: 'text/html' });
@@ -929,12 +949,14 @@ async function generateReport() {
 }
 
 function downloadReport() {
-    const dateStr = document.getElementById('reportDate').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const dateRange = startDate === endDate ? startDate : `${startDate}_${endDate}`;
     const blob = new Blob([currentReportHtml], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `产量达成及异常分析报告_${dateStr}.html`;
+    a.download = `产量达成及异常分析报告_${dateRange}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
