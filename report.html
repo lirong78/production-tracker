@@ -50,9 +50,11 @@ body {
     display: flex;
     gap: 12px;
     align-items: center;
+    flex-wrap: wrap;
 }
 .date-input-wrapper input[type="date"] {
     flex: 1;
+    min-width: 140px;
     padding: 12px 16px;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
@@ -156,16 +158,6 @@ body {
 </style>
 </head>
 <body>
-
-<div style="display:flex;gap:6px;padding:10px 12px;background:#f8f9fa;flex-wrap:wrap;justify-content:center;font-size:12px;border-bottom:1px solid #e0e0e0;">
-  <a href="index.html" style="padding:5px 12px;background:#e8eaf6;color:#1a237e;text-decoration:none;border-radius:5px;">📝 数据录入</a>
-  <a href="dashboard.html" style="padding:5px 12px;background:#e8eaf6;color:#1a237e;text-decoration:none;border-radius:5px;_DASH">📊 产能看板</a>
-  <a href="report.html" style="padding:5px 12px;background:#e8eaf6;color:#1a237e;text-decoration:none;border-radius:5px;">📋 生成报告</a>
-  <a href="celebration.html" style="padding:5px 12px;background:#e8eaf6;color:#1a237e;text-decoration:none;border-radius:5px;">🏆 喜报录入</a>
-  <a href="celebration_board.html" style="padding:5px 12px;background:#e8eaf6;color:#1a237e;text-decoration:none;border-radius:5px;">🎉 喜报看板</a>
-  <a href="line_config.html" style="padding:5px 12px;background:#e8eaf6;color:#1a237e;text-decoration:none;border-radius:5px;">⚙️ 配置管理</a>
-</div>
-
 <div class="container">
     <div class="header">
         <h1>📊 产量达成及异常分析报告</h1>
@@ -217,6 +209,10 @@ const LINES = [
 // 不计入目标的异常类别
 const NON_TARGET_CATEGORIES = ['试制试产', '返工', '支援'];
 
+// 内外部异常类别分类（按异常类别分）
+const INTERNAL_CATEGORIES = ['人员异常', '换型损失', '爬坡损失'];
+const EXTERNAL_CATEGORIES = ['来料异常', '物流配送', '设备故障', '流水线异常'];
+
 // 设置默认日期范围为最近7天
 document.addEventListener('DOMContentLoaded', function() {
     const today = new Date();
@@ -240,8 +236,11 @@ async function fetchData(startDate, endDate) {
     return await response.json();
 }
 
-function isInternal(dept) {
-    return dept && dept.includes('部品');
+// 判断异常类别是内部还是外部
+function getCategoryType(category) {
+    if (INTERNAL_CATEGORIES.includes(category)) return 'internal';
+    if (EXTERNAL_CATEGORIES.includes(category)) return 'external';
+    return 'other'; // 试制试产、返工、支援、其他
 }
 
 function analyzeData(data, startDate, endDate) {
@@ -260,8 +259,6 @@ function analyzeData(data, startDate, endDate) {
                 diff: 0,
                 rate: 0,
                 duration: 0,
-                start_time: '--',
-                end_time: '--',
                 records: [],
                 exceptions: [],
                 exception_days: 0
@@ -286,13 +283,14 @@ function analyzeData(data, startDate, endDate) {
             
             if (d.record_date) allDates.add(d.record_date);
             
+            // 收集异常（排除"其他"和空值）
             if (reasonCat && reasonCat !== '其他' && reasonCat !== '') {
                 const target = d.target_value || 0;
                 const achieved = d.achieved_value || 0;
                 const impact = target > achieved ? target - achieved : 0;
                 
                 const dept = d.responsible_dept || '';
-                const isInternalException = isInternal(dept);
+                const categoryType = getCategoryType(reasonCat);
                 
                 if (d.record_date) exceptionDates.add(d.record_date);
                 
@@ -302,12 +300,12 @@ function analyzeData(data, startDate, endDate) {
                     leader: lineInfo.leader,
                     hour: d.hour_slot || '',
                     category: reasonCat,
+                    category_type: categoryType,
                     reason: d.reason || '',
                     target: target,
                     achieved: achieved,
                     impact: impact,
                     dept: dept,
-                    is_internal: isInternalException,
                     responsible_person: d.responsible_person || ''
                 };
                 
@@ -316,19 +314,7 @@ function analyzeData(data, startDate, endDate) {
             }
         }
         
-        // Calculate production days and time range
         const productionDays = allDates.size;
-        const avgHoursPerDay = productionDays > 0 ? (lineData.length / productionDays) : 0;
-        
-        // Get typical start/end time from first date's data
-        const firstDateData = lineData.filter(d => d.record_date === startDate).sort((a, b) => (a.hour_slot || '').localeCompare(b.hour_slot || ''));
-        let startTime = '--', endTime = '--';
-        if (firstDateData.length > 0) {
-            const firstSlot = firstDateData[0].hour_slot || '';
-            const lastSlot = firstDateData[firstDateData.length - 1].hour_slot || '';
-            startTime = firstSlot.includes('~') ? firstSlot.split('~')[0] : firstSlot.split('-')[0];
-            endTime = lastSlot.includes('~') ? lastSlot.split('~')[1] : lastSlot.split('-')[1];
-        }
         
         const diff = totalAchieved - totalTarget;
         const rate = totalTarget > 0 ? (totalAchieved / totalTarget * 100) : 0;
@@ -341,8 +327,6 @@ function analyzeData(data, startDate, endDate) {
             diff: diff,
             rate: rate,
             duration: productionDays,
-            start_time: startTime,
-            end_time: endTime,
             records: lineData,
             exceptions: lineExceptions,
             exception_days: exceptionDates.size
@@ -360,8 +344,9 @@ function generateReportHtml(dateRange, lineStats, allExceptions) {
     const totalDiff = totalAchieved - totalTarget;
     const totalRate = totalTarget > 0 ? (totalAchieved / totalTarget * 100) : 0;
     
-    const internalExceptions = allExceptions.filter(e => e.is_internal);
-    const externalExceptions = allExceptions.filter(e => !e.is_internal);
+    // 按异常类别类型分组
+    const internalExceptions = allExceptions.filter(e => e.category_type === 'internal');
+    const externalExceptions = allExceptions.filter(e => e.category_type === 'external');
     
     const internalCount = internalExceptions.length;
     const externalCount = externalExceptions.length;
@@ -370,9 +355,9 @@ function generateReportHtml(dateRange, lineStats, allExceptions) {
     const totalImpact = internalImpact + externalImpact;
     
     const internalLines = new Set(internalExceptions.map(e => e.line));
-    const externalDepts = new Set(externalExceptions.filter(e => e.dept).map(e => e.dept));
+    const externalLines = new Set(externalExceptions.map(e => e.line));
     
-    // 按类别统计
+    // 按异常类别统计（分内外部）
     const internalCategoryStats = {};
     const externalCategoryStats = {};
     
@@ -398,7 +383,7 @@ function generateReportHtml(dateRange, lineStats, allExceptions) {
         if (e.dept) externalCategoryStats[cat].depts.add(e.dept);
     }
     
-    // 按责任部门统计
+    // 按责任部门统计（不分内外部）
     const deptStats = {};
     for (const e of allExceptions) {
         const dept = e.dept || '未指定';
@@ -493,9 +478,10 @@ tr:hover { background: #f9f9f9; }
 </div>
 </div>
 
+<h2>二、异常概览（按异常类别分内外部）</h2>
 <div class="compare-cards">
 <div class="compare-card internal">
-<div class="title">🔶 内部异常（部品分厂）</div>
+<div class="title">🔶 内部异常（人员/换型/爬坡）</div>
 <div class="stats">
 <div class="stat-item">
 <div class="stat-label">异常次数</div>
@@ -516,7 +502,7 @@ tr:hover { background: #f9f9f9; }
 </div>
 </div>
 <div class="compare-card external">
-<div class="title">🔴 外部异常（其他部门）</div>
+<div class="title">🔴 外部异常（来料/物流/设备）</div>
 <div class="stats">
 <div class="stat-item">
 <div class="stat-label">异常次数</div>
@@ -531,14 +517,14 @@ tr:hover { background: #f9f9f9; }
 <div class="stat-value">${totalImpact > 0 ? (externalImpact/totalImpact*100).toFixed(1) : '0.0'}%</div>
 </div>
 <div class="stat-item">
-<div class="stat-label">涉及部门</div>
-<div class="stat-value">${externalDepts.size}</div>
+<div class="stat-label">涉及线体</div>
+<div class="stat-value">${externalLines.size}</div>
 </div>
 </div>
 </div>
 </div>
 
-<h2>二、各线体累计达成情况</h2>
+<h2>三、各线体累计达成情况</h2>
 <table>
 <thead>
 <tr>
@@ -564,7 +550,7 @@ tr:hover { background: #f9f9f9; }
 <tr>
 <td><span class="rank ${rankClass}">${i+1}</span></td>
 <td><strong>${s.short}</strong><br><small style="color:#666">班长：${s.leader}</small></td>
-<td>${s.duration}天<br><small>日均${s.start_time}~${s.end_time}</small></td>
+<td>${s.duration}天</td>
 <td>${s.target.toLocaleString()}</td>
 <td>${s.achieved.toLocaleString()}</td>
 <td class="${rateClass}">${s.rate.toFixed(1)}%</td>
@@ -577,9 +563,9 @@ tr:hover { background: #f9f9f9; }
 </tbody>
 </table>
 
-<h2>三、异常原因分类统计</h2>
+<h2>四、异常原因分类统计</h2>
 
-<h3>🔶 内部异常原因（部品分厂）</h3>
+<h3>🔶 内部异常类别（人员异常/换型损失/爬坡损失）</h3>
 <table>
 <thead>
 <tr>
@@ -617,7 +603,7 @@ tr:hover { background: #f9f9f9; }
 </tbody>
 </table>
 
-<h3>🔴 外部异常原因（其他部门）</h3>
+<h3>🔴 外部异常类别（来料异常/物流配送/设备故障/流水线异常）</h3>
 <table>
 <thead>
 <tr>
@@ -626,7 +612,7 @@ tr:hover { background: #f9f9f9; }
 <th>累计影响台数</th>
 <th>占外部比</th>
 <th>涉及线体</th>
-<th>主要责任部门</th>
+<th>责任部门</th>
 </tr>
 </thead>
 <tbody>`;
@@ -655,7 +641,7 @@ tr:hover { background: #f9f9f9; }
 </tbody>
 </table>
 
-<h2>四、责任部门异常分布</h2>
+<h2>五、责任部门异常分布</h2>
 <table>
 <thead>
 <tr>
@@ -686,10 +672,11 @@ tr:hover { background: #f9f9f9; }
 </tbody>
 </table>
 
-<h2>五、各线体异常明细汇总</h2>
+<h2>六、各线体异常明细汇总</h2>
 <table>
 <thead>
 <tr>
+<th>日期</th>
 <th>时段</th>
 <th>线体</th>
 <th>影响台数</th>
@@ -702,9 +689,10 @@ tr:hover { background: #f9f9f9; }
 <tbody>`;
     
     for (const e of sortedExceptions.slice(0, 30)) {
-        const typeTag = e.is_internal ? '<span class="tag tag-internal">内部</span>' : '<span class="tag tag-external">外部</span>';
+        const typeTag = e.category_type === 'internal' ? '<span class="tag tag-internal">内部</span>' : '<span class="tag tag-external">外部</span>';
         html += `
 <tr>
+<td>${e.date}</td>
 <td>${e.hour}</td>
 <td>${e.line}</td>
 <td class="impact">${e.impact}</td>
@@ -719,9 +707,9 @@ tr:hover { background: #f9f9f9; }
 </tbody>
 </table>
 
-<h2>六、关键发现与改善建议</h2>
+<h2>七、关键发现与改善建议</h2>
 
-<h3>🔶 内部异常关键发现（部品分厂）</h3>
+<h3>🔶 内部异常关键发现</h3>
 <table class="suggestion-table">
 <thead>
 <tr>
@@ -763,7 +751,7 @@ tr:hover { background: #f9f9f9; }
 </tbody>
 </table>
 
-<h3>🔴 外部异常关键发现（其他部门）</h3>
+<h3>🔴 外部异常关键发现</h3>
 <table class="suggestion-table">
 <thead>
 <tr>
@@ -806,9 +794,9 @@ tr:hover { background: #f9f9f9; }
 </tbody>
 </table>
 
-<h2>七、改善行动跟踪表</h2>
+<h2>八、改善行动跟踪表</h2>
 
-<h3>🔶 内部改善行动（部品分厂）</h3>
+<h3>🔶 内部改善行动</h3>
 <table class="action-table">
 <thead>
 <tr>
@@ -842,7 +830,7 @@ tr:hover { background: #f9f9f9; }
 </tbody>
 </table>
 
-<h3>🔴 外部改善行动（其他部门）</h3>
+<h3>🔴 外部改善行动</h3>
 <table class="action-table">
 <thead>
 <tr>
@@ -913,7 +901,6 @@ async function generateReport() {
     generateBtn.disabled = true;
     
     try {
-        // 获取数据
         const data = await fetchData(startDate, endDate);
         
         if (!data || data.length === 0) {
@@ -923,14 +910,11 @@ async function generateReport() {
             return;
         }
         
-        // 分析数据
         const { lineStats, allExceptions } = analyzeData(data, startDate, endDate);
         
-        // 生成报告
         const dateRange = startDate === endDate ? startDate : `${startDate} 至 ${endDate}`;
         currentReportHtml = generateReportHtml(dateRange, lineStats, allExceptions);
         
-        // 显示预览
         const blob = new Blob([currentReportHtml], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         previewFrame.src = url;
