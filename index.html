@@ -1,1759 +1,478 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>产线小时达成录入</title>
-<script src="html2canvas.min.js"></script>
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; }
-.header { background: linear-gradient(135deg, #1a73e8, #0d47a1); color: #fff; padding: 16px 20px; text-align: center; position: sticky; top: 0; z-index: 100; }
-.header h1 { font-size: 18px; font-weight: 600; }
-.header .date { font-size: 13px; opacity: 0.85; margin-top: 4px; }
-.tabs { display: flex; background: #fff; border-bottom: 1px solid #e0e0e0; position: sticky; top: 56px; z-index: 99; }
-.tab { flex: 1; text-align: center; padding: 12px; font-size: 14px; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
-.tab.active { color: #1a73e8; border-bottom-color: #1a73e8; font-weight: 600; }
-.container { max-width: 600px; margin: 0 auto; padding: 12px; }
-
-.form-section { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-.form-section h3 { font-size: 15px; color: #1a73e8; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
-.form-row { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; }
-.form-row label { font-size: 13px; color: #666; min-width: 50px; }
-.form-row select { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fafafa; }
-.form-row select:focus { border-color: #1a73e8; outline: none; background: #fff; }
-
-.summary { background: linear-gradient(135deg, #1a73e8, #0d47a1); color: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-.summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.summary-row:last-child { margin-bottom: 0; }
-.summary-label { font-size: 13px; opacity: 0.85; }
-.summary-value { font-size: 20px; font-weight: 700; }
-.summary-rate { font-size: 28px; font-weight: 700; }
-
-.time-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
-.time-row { background: #fafafa; border-radius: 8px; padding: 12px; }
-.time-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.time-label { font-size: 14px; font-weight: 600; color: #333; }
-.time-status { font-size: 12px; padding: 2px 8px; border-radius: 4px; }
-.status-ok { background: #e8f5e9; color: #4caf50; }
-.status-fail { background: #ffebee; color: #f44336; font-weight: 600; }
-.time-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-.time-inputs label { font-size: 11px; color: #888; display: block; margin-bottom: 4px; }
-.time-inputs select, .time-inputs input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
-.time-inputs select:focus, .time-inputs input:focus { border-color: #1a73e8; outline: none; }
-.time-target { font-size: 11px; color: #1a73e8; font-weight: 600; margin-top: 4px; }
-.time-reason { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; }
-.time-reason:focus { border-color: #1a73e8; outline: none; }
-.time-reason.required { border-color: #f44336; background: #fff5f5; }
-
-.btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.btn-primary { background: #1a73e8; color: #fff; }
-.btn-primary:hover { background: #1557b0; }
-.btn-success { background: #4caf50; color: #fff; margin-top: 8px; }
-.btn-success:hover { background: #388e3c; }
-
-.board-header { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-.board-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
-.board-info { display: flex; gap: 16px; flex-wrap: wrap; }
-.board-info-item { font-size: 13px; color: #666; }
-.board-info-item span { font-weight: 600; color: #333; }
-.chart-container { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-.chart-container h3 { font-size: 14px; color: #555; margin-bottom: 12px; }
-canvas { width: 100% !important; height: 300px !important; }
-.issue-list { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-.issue-list h3 { font-size: 14px; color: #f44336; margin-bottom: 12px; }
-.issue-item { display: flex; gap: 8px; padding: 8px; background: #fff5f5; border-radius: 6px; margin-bottom: 6px; font-size: 13px; align-items: flex-start; }
-.issue-time { font-weight: 600; color: #f44336; min-width: 60px; }
-.issue-reason { color: #666; flex: 1; }
-.no-issue { text-align: center; color: #4caf50; padding: 20px; font-size: 14px; }
-
-.rate-high { color: #4caf50; }
-.rate-mid { color: #ff9800; }
-.rate-low { color: #f44336; }
-
-.empty-state { text-align: center; padding: 40px 20px; color: #999; }
-.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
-.empty-state p { font-size: 14px; }
-
-.hidden { display: none; }
-
-/* 自定义弹窗 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.modal-overlay.show { opacity: 1; }
-.modal-box {
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  min-width: 280px;
-  max-width: 360px;
-  text-align: center;
-  transform: scale(0.9);
-  transition: transform 0.2s;
-}
-.modal-overlay.show .modal-box { transform: scale(1); }
-.modal-icon { font-size: 48px; margin-bottom: 12px; }
-.modal-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 8px; }
-.modal-message { font-size: 13px; color: #666; margin-bottom: 16px; line-height: 1.5; }
-.modal-btn {
-  padding: 10px 32px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.modal-btn-success { background: #4caf50; color: #fff; }
-.modal-btn-success:hover { background: #388e3c; }
-.modal-btn-error { background: #f44336; color: #fff; }
-.modal-btn-error:hover { background: #d32f2f; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>部品产量看板</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 20px; }
+        .header h1 { font-size: 2.2em; margin-bottom: 8px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        
+        /* 控制面板 */
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.15);
+            padding: 8px 15px;
+            border-radius: 25px;
+        }
+        .control-group label {
+            color: white;
+            font-size: 0.9em;
+        }
+        .control-group input, .control-group select {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 15px;
+            background: white;
+            font-size: 0.9em;
+            outline: none;
+        }
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 20px;
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn:hover { transform: scale(1.05); }
+        .btn.active { background: #f093fb; color: white; }
+        
+        /* 汇总卡片 */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 18px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .card .label { color: #666; font-size: 0.85em; margin-bottom: 8px; }
+        .card .value { font-size: 2.2em; font-weight: bold; color: #333; }
+        .card .sub { color: #999; font-size: 0.8em; margin-top: 4px; }
+        
+        /* 线体详情 */
+        .line-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .line-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        /* 柱状图 */
+        .chart-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 250px;
+            padding: 15px 0;
+            border-bottom: 2px solid #eee;
+        }
+        .bar-group { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .bar {
+            width: 60%;
+            max-width: 50px;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px 6px 0 0;
+            position: relative;
+            min-height: 3px;
+        }
+        .bar-value {
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: bold;
+            color: #667eea;
+            font-size: 0.8em;
+        }
+        .bar-label { margin-top: 8px; color: #666; font-size: 0.8em; }
+        
+        /* 表格 */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+        .data-table th, .data-table td {
+            padding: 10px 8px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        .data-table th {
+            background: #f8f9fa;
+            color: #666;
+            font-weight: 600;
+        }
+        .data-table tr:hover { background: #f8f9fa; }
+        .data-table .total-col { font-weight: bold; color: #667eea; }
+        
+        /* 月度视图 */
+        .month-view { display: none; }
+        .month-view.active { display: block; }
+        .day-view.active { display: block; }
+        .day-view { display: none; }
+        
+        /* 无数据提示 */
+        .no-data {
+            text-align: center;
+            color: white;
+            padding: 50px;
+            font-size: 1.2em;
+            opacity: 0.8;
+        }
+        
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            color: white;
+            opacity: 0.7;
+            margin-top: 25px;
+            font-size: 0.85em;
+        }
+    </style>
 </head>
 <body>
-
-<div class="header">
-  <h1>📊 产线小时达成录入</h1>
-  <div class="date" id="currentDate"></div>
-</div>
-
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('input')">📝 录入</div>
-  <div class="tab" onclick="switchTab('board')">📊 看板</div>
-</div>
-
-<div style="display:flex;gap:6px;padding:8px 12px;background:#f8f9fa;flex-wrap:wrap;justify-content:center;font-size:12px;">
-  <a href="index.html" style="padding:5px 12px;background:#1a73e8;color:#fff;text-decoration:none;border-radius:5px;font-weight:600;">📝 数据录入</a>
-  <a href="dashboard.html" style="padding:5px 12px;background:#e8eaf6;color:#1a237e;text-decoration:none;border-radius:5px;">📊 产能看板</a>
-  <a href="report.html" style="padding:5px 12px;background:#e8eaf6;color:#1a237e;text-decoration:none;border-radius:5px;">📋 生成报告</a>
-  <a href="celebration.html" style="padding:5px 12px;background:#e8eaf6;color:#1a237e;text-decoration:none;border-radius:5px;">🏆 喜报录入</a>
-  <a href="celebration_board.html" style="padding:5px 12px;background:#e8eaf6;color:#1a237e;text-decoration:none;border-radius:5px;">🎉 喜报看板</a>
-  <a href="line_config.html" style="padding:5px 12px;background:#e8eaf6;color:#1a237e;text-decoration:none;border-radius:5px;">⚙️ 配置管理</a>
-</div>
-
-<!-- 录入页 -->
-<div class="container" id="inputPage">
-  <div class="form-section">
-    <h3>选择日期和线体</h3>
-    <div class="form-row">
-      <label>日期</label>
-      <input type="date" id="recordDate" onchange="onDateChange()" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fafafa">
-    </div>
-    <div class="form-row">
-      <label>线体</label>
-      <select id="lineSelect" onchange="onLineChange()">
-        <option value="">请选择线体</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <label>开班时间</label>
-      <select id="startTimeSelect" onchange="onStartTimeChange()" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fafafa">
-        <option value="7">7:00（提前开班）</option>
-        <option value="8" selected>8:00（正常开班）</option>
-        <option value="9">9:00</option>
-        <option value="10">10:00</option>
-        <option value="11">11:00</option>
-        <option value="12">12:00</option>
-        <option value="13">13:00</option>
-        <option value="14">14:00</option>
-        <option value="15">15:00</option>
-        <option value="16">16:00</option>
-        <option value="17">17:00</option>
-        <option value="18">18:00</option>
-        <option value="19">19:00</option>
-        <option value="20">20:00</option>
-        <option value="21">21:00</option>
-        <option value="22">22:00</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="summary" id="summarySection" style="display:none">
-    <div class="summary-row">
-      <span class="summary-label" id="summaryDateLabel">当日累计达成</span>
-      <span class="summary-value" id="totalAchieved">0</span>
-    </div>
-    <div class="summary-row">
-      <span class="summary-label">当日累计目标</span>
-      <span class="summary-value" id="totalTarget">0</span>
-    </div>
-    <div class="summary-row">
-      <span class="summary-label">当日达成率</span>
-      <span class="summary-rate" id="totalRate">0%</span>
-    </div>
-  </div>
-
-  <div class="form-section" id="timeSection" style="display:none">
-    <h3>小时达成录入（每小时选择型号和达成数）</h3>
-    <div class="time-grid" id="timeGrid"></div>
-  </div>
-
-  <div id="submitSection" style="display:none">
-    <button class="btn btn-primary" onclick="saveData()">💾 保存数据</button>
-    <button class="btn btn-success" onclick="switchTab('board')">📊 查看看板</button>
-  </div>
-</div>
-
-<!-- 看板页 -->
-<div class="container hidden" id="boardPage">
-  <div class="form-section">
-    <h3>选择日期查看看板</h3>
-    <div class="form-row">
-      <label>日期</label>
-      <input type="date" id="boardDate" onchange="renderBoard()" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fafafa">
-    </div>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn btn-primary" onclick="renderBoard()" style="flex:1">🔄 刷新看板</button>
-      <button class="btn btn-primary" onclick="generateBoardImage()" style="flex:1;background:#9c27b0">📸 看板长图</button>
-    </div>
-    <div style="margin-top:8px">
-      <button class="btn btn-success" onclick="showAnalysisPanel()" style="width:100%;background:#ff9800">📊 产能分析</button>
-    </div>
-    
-    <!-- 产能分析面板 -->
-    <div id="analysisPanel" style="display:none;margin-top:12px;padding:16px;background:#f5f5f5;border-radius:12px">
-      <h4 style="font-size:14px;color:#333;margin-bottom:12px">选择日期范围</h4>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <div style="flex:1">
-          <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">开始日期</label>
-          <input type="date" id="analysisStartDate" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+    <div class="container">
+        <div class="header">
+            <h1>🏭 部品产量看板</h1>
         </div>
-        <div style="flex:1">
-          <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">结束日期</label>
-          <input type="date" id="analysisEndDate" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px">
-        </div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" onclick="generateReportImage()" style="flex:1;background:#1a73e8">📊 产能达成报表</button>
-        <button class="btn btn-primary" onclick="generateReasonSummary()" style="flex:1;background:#d32f2f">📋 产量达成与异常损失报告</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="boardContent">
-    <div class="empty-state">
-      <div class="icon">📊</div>
-      <p>请选择日期查看看板</p>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="supabase.js"></script>
-<script>
-const SUPABASE_URL = 'https://jtcoqlpxdubcmdpawyiu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_g9LTQJUkOYi2F0AU8wmPbw_Gb-kxdI_';
-
-let db = null;
-let lineModels = {}; // { line_id: [{ model_name, target_value }] }
-let lines = []; // [{ id, name }]
-
-try {
-  if (window.supabase && window.supabase.createClient) {
-    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log('Supabase initialized');
-  }
-} catch(e) {
-  console.error('Supabase init error:', e);
-}
-
-const TIME_SLOTS = [];
-for (let h = 7; h < 22; h++) {
-  TIME_SLOTS.push(`${h}:00-${h+1}:00`);
-}
-
-let chartInstance = null;
-
-// 初始化
-async function init() {
-  document.getElementById('currentDate').textContent = new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
-
-  // 设置日期选择器：最早7天前，最晚今天
-  const today = new Date();
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(today.getDate() - 7);
-
-  // 使用本地时间格式化，避免时区问题
-  const formatDate = (d) => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const todayStr = formatDate(today);
-  const sevenDaysAgoStr = formatDate(sevenDaysAgo);
-
-  const dateInput = document.getElementById('recordDate');
-  dateInput.max = todayStr;
-  dateInput.min = sevenDaysAgoStr;
-  dateInput.value = todayStr;
-
-  const boardDateInput = document.getElementById('boardDate');
-  const ninetyDaysAgo = new Date();
-  ninetyDaysAgo.setDate(today.getDate() - 90);
-  boardDateInput.max = todayStr;
-  boardDateInput.min = formatDate(ninetyDaysAgo);
-  boardDateInput.value = todayStr;
-
-  await loadLines();
-  await loadLineModels();
-  populateLineSelects();
-}
-
-// 日期变化
-function onDateChange() {
-  const lineId = document.getElementById('lineSelect').value;
-  if (lineId) {
-    buildTimeGrid();
-  }
-}
-
-// 获取选择的日期
-function getSelectedDate() {
-  return document.getElementById('recordDate').value;
-}
-
-// 加载线体
-async function loadLines() {
-  if (!db) return;
-  const { data } = await db.from('production_lines').select('*').eq('is_active', true).order('sort_order');
-  if (data) lines = data;
-}
-
-// 加载线体-型号关联
-async function loadLineModels() {
-  if (!db) return;
-  // 从 model_targets 表读取型号配置
-  const { data } = await db.from('model_targets').select('*');
-  if (data) {
-    lineModels = {};
-    // 按线体名称分组
-    const lineNameToId = {};
-    lines.forEach(l => { lineNameToId[l.name] = l.id; });
-    
-    data.forEach(m => {
-      const lineId = lineNameToId[m.line_name];
-      if (lineId) {
-        if (!lineModels[lineId]) lineModels[lineId] = [];
-        lineModels[lineId].push({ model_name: m.model_name, target_value: m.target_uph });
-      }
-    });
-  }
-}
-
-// 填充线体下拉框
-function populateLineSelects() {
-  const selects = ['lineSelect'];
-  selects.forEach(id => {
-    const sel = document.getElementById(id);
-    const val = sel.value;
-    sel.innerHTML = '<option value="">请选择线体</option>';
-    lines.forEach(l => {
-      sel.innerHTML += `<option value="${l.id}" ${val == l.id ? 'selected' : ''}>${l.name}</option>`;
-    });
-    sel.value = val;
-  });
-}
-
-// 获取线体名称
-function getLineName(lineId) {
-  const l = lines.find(x => x.id == lineId);
-  return l ? l.name : '';
-}
-
-// 获取线体的型号列表
-function getModelsForLine(lineId) {
-  // lineId 可能是字符串UUID或数字，统一用字符串匹配
-  return lineModels[lineId] || lineModels[String(lineId)] || [];
-}
-
-// Tab切换
-async function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.container').forEach(c => c.classList.add('hidden'));
-
-  if (tab === 'input') {
-    document.getElementById('inputPage').classList.remove('hidden');
-    document.querySelectorAll('.tab')[0].classList.add('active');
-  } else if (tab === 'board') {
-    document.getElementById('boardPage').classList.remove('hidden');
-    document.querySelectorAll('.tab')[1].classList.add('active');
-    await renderBoard();
-  }
-}
-
-// 线体变化
-function onLineChange() {
-  const lineId = document.getElementById('lineSelect').value;
-
-  if (lineId) {
-    buildTimeGrid().then(() => {
-      document.getElementById('timeSection').style.display = 'block';
-      document.getElementById('summarySection').style.display = 'flex';
-      document.getElementById('submitSection').style.display = 'block';
-    }).catch(e => {
-      console.error('onLineChange error:', e);
-      document.getElementById('timeSection').style.display = 'block';
-      document.getElementById('summarySection').style.display = 'flex';
-      document.getElementById('submitSection').style.display = 'block';
-    });
-  } else {
-    document.getElementById('timeSection').style.display = 'none';
-    document.getElementById('summarySection').style.display = 'none';
-    document.getElementById('submitSection').style.display = 'none';
-  }
-}
-
-// 开班时间变化
-function onStartTimeChange() {
-  buildTimeGrid();
-}
-
-// 获取开班时间
-function getStartTime() {
-  return parseInt(document.getElementById('startTimeSelect').value) || 8;
-}
-
-// 构建时间网格
-async function buildTimeGrid() {
-  const grid = document.getElementById('timeGrid');
-  grid.innerHTML = '';
-
-  const lineId = document.getElementById('lineSelect').value;
-  const startTime = getStartTime();
-  let savedData = null;
-
-  try {
-    savedData = await getSavedData(lineId);
-  } catch(e) {
-    console.error('getSavedData error:', e);
-    savedData = null;
-  }
-
-  const models = getModelsForLine(lineId);
-
-  TIME_SLOTS.forEach((slot, i) => {
-    // 提取时间段的起始小时
-    const slotHour = parseInt(slot.split(':')[0]);
-    const isNotStarted = slotHour < startTime;
-    
-    const saved = savedData ? savedData.find(s => s.hour_slot === slot) : null;
-    const savedModel = saved ? saved.model : '';
-    const savedAchieved = saved ? saved.achieved : '';
-    const savedReason = saved ? saved.reason : '';
-
-    const row = document.createElement('div');
-    row.className = 'time-row';
-    row.id = `timeRow_${i}`;
-    
-    // 如果是未开班时间段，添加特殊样式
-    if (isNotStarted) {
-      row.style.background = '#f0f0f0';
-      row.style.opacity = '0.6';
-    }
-
-    let modelOptions = '<option value="">选择型号</option>';
-    models.forEach(m => {
-      const selected = savedModel === m.model_name ? 'selected' : '';
-      modelOptions += `<option value="${m.model_name}" data-target="${m.target_value}" ${selected}>${m.model_name} (目标${m.target_value})</option>`;
-    });
-
-    // 未开班时间段显示不同的内容
-    if (isNotStarted) {
-      row.innerHTML = `
-        <div class="time-header">
-          <span class="time-label">${slot.replace(':00-','~').replace(':00','')}</span>
-          <span class="time-status" style="background:#e0e0e0;color:#666">未开班</span>
-        </div>
-        <div style="font-size:12px;color:#888;padding:8px 0">此时间段在开班时间之前，无需录入</div>
-      `;
-    } else {
-      row.innerHTML = `
-        <div class="time-header">
-          <span class="time-label">${slot.replace(':00-','~').replace(':00','')}</span>
-          <span class="time-status" id="status_${i}">-</span>
-        </div>
-        <div class="time-inputs">
-          <div>
-            <label>型号</label>
-            <select id="model_${i}" onchange="onModelChange(${i})">
-              ${modelOptions}
-            </select>
-            <div class="time-target" id="target_${i}"></div>
-          </div>
-          <div>
-            <label>达成数</label>
-            <input type="number" id="achieved_${i}" value="${savedAchieved}" placeholder="输入达成数" oninput="onAchievedChange(${i})">
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <div style="flex:1">
-            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">休息分钟数</label>
-            <input type="number" id="rest_${i}" value="${saved ? (saved.rest_minutes || 0) : 0}" min="0" max="60" placeholder="0" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px" oninput="onRestChange(${i})">
-          </div>
-          <div style="flex:1">
-            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">异常类别</label>
-            <select id="reasonCategory_${i}" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px" onchange="onReasonCategoryChange(${i})">
-              <option value="">请选择</option>
-              <option value="来料异常" ${saved && saved.reason_category === '来料异常' ? 'selected' : ''}>来料异常（外部）</option>
-              <option value="物流配送" ${saved && saved.reason_category === '物流配送' ? 'selected' : ''}>物流配送（外部）</option>
-              <option value="换型损失" ${saved && saved.reason_category === '换型损失' ? 'selected' : ''}>换型损失（内部）</option>
-              <option value="爬坡损失" ${saved && saved.reason_category === '爬坡损失' ? 'selected' : ''}>爬坡损失（内部）</option>
-              <option value="设备故障" ${saved && saved.reason_category === '设备故障' ? 'selected' : ''}>设备故障（外部）</option>
-              <option value="流水线异常" ${saved && saved.reason_category === '流水线异常' ? 'selected' : ''}>流水线异常（外部）</option>
-              <option value="人员异常" ${saved && saved.reason_category === '人员异常' ? 'selected' : ''}>人员异常（内部）</option>
-              <option value="试制试产" ${saved && saved.reason_category === '试制试产' ? 'selected' : ''}>试制试产</option>
-              <option value="返工" ${saved && saved.reason_category === '返工' ? 'selected' : ''}>返工</option>
-              <option value="支援" ${saved && saved.reason_category === '支援' ? 'selected' : ''}>支援</option>
-              <option value="其他" ${saved && saved.reason_category === '其他' ? 'selected' : ''}>其他</option>
-            </select>
-          </div>
-          <div style="flex:2">
-            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">未达标原因</label>
-            <input class="time-reason" id="reason_${i}" value="${savedReason}" placeholder="异常原因（选填，可作为补充说明）" oninput="onReasonChange(${i})">
-          </div>
-        </div>
-      `;
-    }
-    grid.appendChild(row);
-
-    if (!isNotStarted && savedModel && savedAchieved !== '') {
-      updateRowStatus(i);
-    }
-  });
-
-  updateSummary();
-}
-
-// 型号变化
-function onModelChange(index) {
-  updateRowStatus(index);
-  updateSummary();
-}
-
-// 达成数变化
-function onAchievedChange(index) {
-  updateRowStatus(index);
-  updateSummary();
-}
-
-// 休息分钟数变化
-function onRestChange(index) {
-  updateRowStatus(index);
-  updateSummary();
-}
-
-// 获取型号目标值
-function getModelTarget(lineId, modelName) {
-  const models = getModelsForLine(lineId);
-  const m = models.find(x => x.model_name === modelName);
-  return m ? m.target_value : 0;
-}
-
-// 根据休息分钟数计算调整后的目标
-function getAdjustedTarget(baseTarget, restMinutes) {
-  if (!baseTarget || baseTarget <= 0) return 0;
-  const rest = parseInt(restMinutes) || 0;
-  if (rest <= 0) return baseTarget;
-  if (rest >= 60) return 0;
-  // 按比例计算：目标 × (60 - 休息分钟) / 60
-  return Math.round(baseTarget * (60 - rest) / 60);
-}
-
-// 更新行状态
-function updateRowStatus(index) {
-  const lineId = document.getElementById('lineSelect').value;
-  const model = document.getElementById(`model_${index}`).value;
-  const achieved = parseInt(document.getElementById(`achieved_${index}`).value) || 0;
-  const baseTarget = getModelTarget(lineId, model);
-  const restMinutes = parseInt(document.getElementById(`rest_${index}`).value) || 0;
-  const reasonCategory = document.getElementById(`reasonCategory_${index}`).value;
-  
-  // 不计入目标的异常类别
-  const excludeCategories = ['试制试产', '返工', '支援'];
-  const isExcluded = excludeCategories.includes(reasonCategory);
-  
-  // 获取输入框元素
-  const modelEl = document.getElementById(`model_${index}`);
-  const achievedEl = document.getElementById(`achieved_${index}`);
-  const restEl = document.getElementById(`rest_${index}`);
-  const reasonEl = document.getElementById(`reason_${index}`);
-  const reasonCategoryEl = document.getElementById(`reasonCategory_${index}`);
-  
-  let target = getAdjustedTarget(baseTarget, restMinutes);
-  if (isExcluded) {
-    target = 0; // 不计入目标
-  }
-  
-  const targetEl = document.getElementById(`target_${index}`);
-  const statusEl = document.getElementById(`status_${index}`);
-
-  if (isExcluded) {
-    // 不计入目标的异常类别，禁用型号和达成数输入
-    modelEl.disabled = true;
-    modelEl.style.opacity = '0.5';
-    achievedEl.disabled = true;
-    achievedEl.style.opacity = '0.5';
-    achievedEl.value = '';
-    
-    targetEl.textContent = `不计入目标（${reasonCategory}）`;
-    targetEl.style.color = '#999';
-    statusEl.textContent = '-';
-    statusEl.className = 'time-status';
-    reasonCategoryEl.classList.remove('required');
-  } else {
-    // 正常模式，启用输入
-    modelEl.disabled = false;
-    modelEl.style.opacity = '1';
-    achievedEl.disabled = false;
-    achievedEl.style.opacity = '1';
-
-    if (model && baseTarget > 0) {
-      // 显示调整后的目标
-      if (restMinutes > 0) {
-        targetEl.textContent = `目标: ${target} (休息${restMinutes}分钟)`;
-        targetEl.style.color = '';
         
-        if (achieved >= target) {
-          statusEl.textContent = '✓ 达标';
-          statusEl.className = 'time-status status-ok';
-          reasonEl.classList.remove('required');
-          reasonCategoryEl.classList.remove('required');
-        } else if (achieved > 0) {
-          statusEl.textContent = `差 ${target - achieved}`;
-          statusEl.className = 'time-status status-fail';
-          reasonCategoryEl.classList.add('required');
-        } else {
-          statusEl.textContent = '-';
-          statusEl.className = 'time-status';
-        }
-      } else {
-        targetEl.textContent = `目标: ${target}`;
-        targetEl.style.color = '';
+        <!-- 控制面板 -->
+        <div class="controls">
+            <div class="control-group">
+                <button class="btn active" id="btnDayView" onclick="switchView('day')">日视图</button>
+                <button class="btn" id="btnMonthView" onclick="switchView('month')">月汇总</button>
+            </div>
+            <div class="control-group" id="dayControls">
+                <label>日期：</label>
+                <input type="date" id="datePicker" onchange="loadDayData()">
+            </div>
+            <div class="control-group" id="monthControls" style="display:none;">
+                <label>月份：</label>
+                <input type="month" id="monthPicker" onchange="loadMonthData()">
+            </div>
+        </div>
         
-        if (achieved >= target) {
-          statusEl.textContent = '✓ 达标';
-          statusEl.className = 'time-status status-ok';
-          reasonEl.classList.remove('required');
-          reasonCategoryEl.classList.remove('required');
-        } else if (achieved > 0) {
-          statusEl.textContent = `差 ${target - achieved}`;
-          statusEl.className = 'time-status status-fail';
-          reasonCategoryEl.classList.add('required');
-        } else {
-          statusEl.textContent = '-';
-          statusEl.className = 'time-status';
-        }
-      }
-    } else {
-      targetEl.textContent = '';
-      statusEl.textContent = '-';
-      statusEl.className = 'time-status';
-    }
-  }
-}
+        <!-- 日视图 -->
+        <div id="dayView" class="day-view active">
+            <div id="dayContent"></div>
+        </div>
+        
+        <!-- 月视图 -->
+        <div id="monthView" class="month-view">
+            <div id="monthContent"></div>
+        </div>
+        
+        <div class="footer">
+            <p>数据来源：MLS 生产条码采集日志 | 统计口径：GOOD 状态产品</p>
+            <p>每天 23:00 自动更新 | 部品产量看板系统 v2.0</p>
+        </div>
+    </div>
 
-function onReasonCategoryChange(index) {
-  const categoryEl = document.getElementById(`reasonCategory_${index}`);
-  if (categoryEl.value) {
-    categoryEl.classList.remove('required');
-  }
-  // 更新行状态和目标显示
-  updateRowStatus(index);
-  updateSummary();
-}
-
-function onReasonChange(index) {
-  const reasonEl = document.getElementById(`reason_${index}`);
-  if (reasonEl.value.trim()) {
-    reasonEl.classList.remove('required');
-  }
-}
-
-// 更新汇总
-function updateSummary() {
-  const lineId = document.getElementById('lineSelect').value;
-  const startTime = getStartTime();
-  let totalAchieved = 0;
-  let totalTarget = 0;
-  
-  // 不计入目标的异常类别
-  const excludeCategories = ['试制试产', '返工', '支援'];
-
-  TIME_SLOTS.forEach((slot, i) => {
-    // 跳过未开班时间段
-    const slotHour = parseInt(slot.split(':')[0]);
-    if (slotHour < startTime) return;
-    
-    const model = document.getElementById(`model_${i}`).value;
-    const achieved = parseInt(document.getElementById(`achieved_${i}`).value) || 0;
-    const baseTarget = getModelTarget(lineId, model);
-    const restMinutes = parseInt(document.getElementById(`rest_${i}`).value) || 0;
-    const reasonCategory = document.getElementById(`reasonCategory_${i}`).value;
-    
-    // 不计入目标的异常类别，目标设为0
-    let target = getAdjustedTarget(baseTarget, restMinutes);
-    if (excludeCategories.includes(reasonCategory)) {
-      target = 0;
-    }
-
-    totalAchieved += achieved;
-    totalTarget += target;
-  });
-
-  const rate = totalTarget > 0 ? ((totalAchieved / totalTarget) * 100).toFixed(1) : 0;
-
-  document.getElementById('totalAchieved').textContent = totalAchieved;
-  document.getElementById('totalTarget').textContent = totalTarget;
-  document.getElementById('totalRate').textContent = rate + '%';
-}
-
-// 保存数据到 Supabase
-async function saveData() {
-  if (!db) { alert('❌ 数据库未连接，请刷新页面重试'); return; }
-
-  const lineId = document.getElementById('lineSelect').value;
-  if (!lineId) { alert('请选择线体'); return; }
-
-  const recordDate = getSelectedDate();
-  const lineName = getLineName(lineId);
-  const startTime = getStartTime();
-  const slots = [];
-  let hasMissingCategory = false;
-
-  // 不计入目标的异常类别
-  const excludeCategories = ['试制试产', '返工', '支援'];
-
-  TIME_SLOTS.forEach((slot, i) => {
-    // 跳过未开班时间段
-    const slotHour = parseInt(slot.split(':')[0]);
-    if (slotHour < startTime) return;
-    
-    const model = document.getElementById(`model_${i}`).value;
-    const achieved = parseInt(document.getElementById(`achieved_${i}`).value) || 0;
-    const reason = document.getElementById(`reason_${i}`).value.trim();
-    const reasonCategory = document.getElementById(`reasonCategory_${i}`).value;
-    const baseTarget = getModelTarget(lineId, model);
-    const restMinutes = parseInt(document.getElementById(`rest_${i}`).value) || 0;
-    
-    // 不计入目标的异常类别，目标设为0
-    let target = getAdjustedTarget(baseTarget, restMinutes);
-    if (excludeCategories.includes(reasonCategory)) {
-      target = 0;
-    }
-
-    if (model && target > 0 && achieved < target && achieved > 0) {
-      if (!reasonCategory) {
-        hasMissingCategory = true;
-        document.getElementById(`reasonCategory_${i}`).classList.add('required');
-      }
-    }
-
-    // 保存条件：必须有型号
-    if (model) {
-      slots.push({
-        line_name: lineName,
-        model_name: model,
-        target_value: target,
-        achieved_value: achieved,
-        reason: reason || null,
-        reason_category: reasonCategory || null,
-        hour_slot: slot,
-        record_date: recordDate,
-        rest_minutes: restMinutes
-      });
-    }
-  });
-
-  if (hasMissingCategory) { alert('未达标的时段必须选择异常类别！'); return; }
-  if (slots.length === 0) { alert('请至少选择一个型号！'); return; }
-
-  // 先删除该线体该日期的所有记录，再插入新数据
-  const { error: delErr } = await db.from('production_records')
-    .delete()
-    .eq('line_name', lineName)
-    .eq('record_date', recordDate);
-  
-  if (delErr) { 
-    console.error('删除旧数据失败:', delErr);
-    alert('❌ 删除旧数据失败: ' + delErr.message); 
-    return; 
-  }
-  
-  // 等待一下确保删除完成
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  // 插入新数据
-  const { error: insErr } = await db.from('production_records').insert(slots);
-  
-  if (insErr) { 
-    console.error('保存失败:', insErr);
-    alert('❌ 保存失败: ' + insErr.message); 
-    return; 
-  }
-
-  alert('✅ ' + recordDate + ' 数据保存成功！');
-}
-
-// 从 Supabase 获取已保存数据
-async function getSavedData(lineId, date) {
-  if (!db) return null;
-
-  const lineName = getLineName(lineId);
-  const dateKey = date || getSelectedDate();
-
-  console.log('getSavedData: lineId=', lineId, 'lineName=', lineName, 'dateKey=', dateKey);
-
-  try {
-    const { data, error } = await db
-      .from('production_records')
-      .select('*')
-      .eq('line_name', lineName)
-      .eq('record_date', dateKey)
-      .order('hour_slot');
-
-    console.log('Query result:', { data, error });
-
-    if (error) { console.error('查询失败:', error); return null; }
-    if (!data || data.length === 0) return null;
-
-    const result = data.map(row => ({
-      hour_slot: row.hour_slot,
-      model: row.model_name,
-      achieved: row.achieved_value,
-      target: row.target_value,
-      reason: row.reason || '',
-      reason_category: row.reason_category || '',
-      rest_minutes: row.rest_minutes || 0
-    }));
-
-    // 按时间顺序排序（提取起始小时）
-    result.sort((a, b) => {
-      const getStartHour = (slot) => {
-        // 处理 "8:00-9:00" 或 "8~9" 格式
-        const match = slot.match(/^(\d+)/);
-        return match ? parseInt(match[1]) : 0;
-      };
-      return getStartHour(a.hour_slot) - getStartHour(b.hour_slot);
-    });
-
-    return result;
-  } catch(e) {
-    console.error('getSavedData exception:', e);
-    return null;
-  }
-}
-
-// 渲染看板 - 每个线体独立图表
-let boardCharts = [];
-
-async function renderBoard() {
-  const boardDate = document.getElementById('boardDate').value;
-  const content = document.getElementById('boardContent');
-
-  console.log('renderBoard called, boardDate:', boardDate);
-  console.log('lines:', lines);
-
-  // 清除旧图表
-  boardCharts.forEach(c => c.destroy());
-  boardCharts = [];
-
-  // 获取所有线体的数据
-  const allLineData = [];
-
-  for (const line of lines) {
-    console.log('Checking line:', line.name, 'id:', line.id);
-    const data = await getSavedData(line.id, boardDate);
-    console.log('Data for', line.name, ':', data);
-    if (data && data.length > 0) {
-      let totalAchieved = 0;
-      let totalTarget = 0;
-      const hourlyData = [];
-
-      data.forEach((record) => {
-        const target = record.target || 0;
-        totalAchieved += record.achieved;
-        totalTarget += target;
-        // 使用数据库中的 hour_slot 字段，而不是数组索引
-        const hourSlot = record.hour_slot || '';
-        hourlyData.push({
-          hour: hourSlot,
-          model: record.model,
-          achieved: record.achieved,
-          target: target,
-          reason: record.reason,
-          reason_category: record.reason_category,
-          rest_minutes: record.rest_minutes || 0,
-          isMet: record.achieved >= target
+    <script>
+        const DATA_BASE_URL = 'data/';
+        const LINES = {
+            'DS01XXCJ': '地刷 1 线',
+            'DS02XXCJ': '地刷 2 线'
+        };
+        
+        let currentView = 'day';
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('datePicker').value = today;
+            document.getElementById('monthPicker').value = today.substring(0, 7);
+            loadDayData();
         });
-      });
-
-      const rate = totalTarget > 0 ? ((totalAchieved / totalTarget) * 100).toFixed(1) : 0;
-
-      allLineData.push({
-        lineId: line.id,
-        lineName: line.name,
-        totalAchieved,
-        totalTarget,
-        rate: parseFloat(rate),
-        hourlyData
-      });
-    }
-  }
-
-  if (allLineData.length === 0) {
-    content.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>${boardDate} 暂无数据</p></div>`;
-    return;
-  }
-
-  // 按达成率排名
-  allLineData.sort((a, b) => b.rate - a.rate);
-
-  const colors = ['#1a73e8', '#4caf50', '#ff9800', '#9c27b0', '#f44336', '#00bcd4', '#ff5722', '#607d8b'];
-  const labels = TIME_SLOTS.map(s => s.replace(':00-','~').replace(':00',''));
-
-  let html = '';
-
-  allLineData.forEach((lineData, idx) => {
-    const rank = idx + 1;
-    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}`;
-    const rateClass = lineData.rate >= 90 ? 'rate-high' : lineData.rate >= 70 ? 'rate-mid' : 'rate-low';
-    const color = colors[idx % colors.length];
-
-    html += `
-      <div class="chart-container" style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <h3 style="font-size:15px;color:#333;margin:0">
-            <span style="font-size:20px;margin-right:6px">${medal}</span>${lineData.lineName}
-          </h3>
-          <div style="text-align:right">
-            <div class="${rateClass}" style="font-size:22px;font-weight:700">${lineData.rate}%</div>
-            <div style="font-size:11px;color:#888">达成${lineData.totalAchieved}/目标${lineData.totalTarget}</div>
-          </div>
-        </div>
-        <canvas id="chart_${lineData.lineId}" style="width:100%!important;height:220px!important"></canvas>
-      </div>
-    `;
-
-    // 每小时产量表格
-    const totalMinutes = lineData.hourlyData.length * 60;
-    const totalRestMinutes = lineData.hourlyData.reduce((sum, h) => sum + (h.rest_minutes || 0), 0);
-    const actualMinutes = totalMinutes - totalRestMinutes;
-    const totalHours = (actualMinutes / 60).toFixed(1);
-    html += `<div class="chart-container" style="margin-bottom:12px;padding:12px">
-      <h3 style="font-size:14px;color:#333;margin-bottom:8px;font-weight:600">📋 ${lineData.lineName} 每小时产量明细 <span style="font-size:14px;color:#1a73e8;font-weight:700;margin-left:10px;background:#e3f2fd;padding:2px 8px;border-radius:4px">开班 ${totalHours}h${totalRestMinutes > 0 ? '（休息' + totalRestMinutes + '分钟）' : ''}</span></h3>
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead>
-          <tr style="background:#f5f5f5;border-bottom:2px solid #ddd">
-            <th style="padding:6px 4px;text-align:left;font-weight:600">时段</th>
-            <th style="padding:6px 4px;text-align:left;font-weight:600">型号</th>
-            <th style="padding:6px 4px;text-align:center;font-weight:600">目标</th>
-            <th style="padding:6px 4px;text-align:center;font-weight:600">达成</th>
-            <th style="padding:6px 4px;text-align:center;font-weight:600">超产/欠产</th>
-            <th style="padding:6px 4px;text-align:left;font-weight:600">异常类别</th>
-            <th style="padding:6px 4px;text-align:left;font-weight:600">异常原因</th>
-          </tr>
-        </thead>
-        <tbody>`;
-    
-    lineData.hourlyData.forEach(h => {
-      const hourLabel = h.hour.replace(':00-','~').replace(':00','');
-      // 不计入目标的异常类别
-      const excludeCategories = ['试制试产', '返工', '支援'];
-      const isExcluded = excludeCategories.includes(h.reason_category);
-      
-      let diff, diffText, diffColor, achievedBg;
-      if (isExcluded) {
-        // 不计入目标的时段
-        diff = 0;
-        diffText = '-';
-        diffColor = '#999';
-        achievedBg = 'background:#f5f5f5';
-      } else {
-        diff = h.achieved - h.target;
-        diffText = diff >= 0 ? `+${diff}` : `${diff}`;
-        diffColor = diff >= 0 ? '#4caf50' : '#f44336';
-        achievedBg = diff >= 0 ? 'background:#e8f5e9' : 'background:#ffebee';
-      }
-      
-      const categoryStyle = h.reason_category ? (isExcluded ? 'color:#999;font-weight:500' : 'color:#d32f2f;font-weight:500') : 'color:#999';
-      const targetText = isExcluded ? '不计入' : h.target;
-      
-      html += `<tr style="border-bottom:1px solid #eee">
-        <td style="padding:5px 4px;font-weight:500">${hourLabel}</td>
-        <td style="padding:5px 4px">${h.model || '-'}</td>
-        <td style="padding:5px 4px;text-align:center;color:${isExcluded ? '#999' : '#333'}">${targetText}</td>
-        <td style="padding:5px 4px;text-align:center;font-weight:700;${achievedBg};color:${isExcluded ? '#666' : diffColor}">${h.achieved}</td>
-        <td style="padding:5px 4px;text-align:center;font-weight:700;color:${diffColor}">${diffText}</td>
-        <td style="padding:5px 4px;font-size:11px;${categoryStyle}">${h.reason_category || ''}</td>
-        <td style="padding:5px 4px;font-size:11px;color:#666">${h.reason || ''}</td>
-      </tr>`;
-    });
-    
-    // 合计行
-    const totalTarget = lineData.hourlyData.reduce((sum, h) => sum + h.target, 0);
-    const totalAchieved = lineData.hourlyData.reduce((sum, h) => sum + h.achieved, 0);
-    const totalDiff = totalAchieved - totalTarget;
-    const totalDiffText = totalDiff >= 0 ? `+${totalDiff}` : `${totalDiff}`;
-    const totalDiffColor = totalDiff >= 0 ? '#4caf50' : '#f44336';
-    const totalAchievedBg = totalDiff >= 0 ? 'background:#e8f5e9' : 'background:#ffebee';
-    
-    html += `<tr style="border-top:2px solid #555;background:#e0e0e0;font-weight:700">
-      <td style="padding:10px 4px;font-weight:700;font-size:14px">合计</td>
-      <td style="padding:10px 4px;font-size:14px">-</td>
-      <td style="padding:10px 4px;text-align:center;font-weight:700;font-size:14px">${totalTarget}</td>
-      <td style="padding:10px 4px;text-align:center;font-weight:700;font-size:15px;${totalAchievedBg};color:${totalDiffColor}">${totalAchieved}</td>
-      <td style="padding:10px 4px;text-align:center;font-weight:700;font-size:15px;color:${totalDiffColor}">${totalDiffText}</td>
-      <td style="padding:10px 4px;font-size:14px">-</td>
-      <td style="padding:10px 4px;font-size:14px">-</td>
-    </tr>`;
-    
-    html += `</tbody></table></div>`;
-  });
-
-  content.innerHTML = html;
-
-  // 渲染每个线体的图表
-  allLineData.forEach((lineData, idx) => {
-    // 达成=绿色，未达成=红色
-    const bgColors = lineData.hourlyData.map(h => h.isMet ? '#4caf50cc' : '#f44336cc');
-
-    // 使用这个线体自己的时间段作为标签
-    const chartLabels = lineData.hourlyData.map(h => h.hour.replace(':00-','~').replace(':00',''));
-
-    const ctx = document.getElementById(`chart_${lineData.lineId}`).getContext('2d');
-    const chart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: chartLabels,
-        datasets: [
-          {
-            label: '达成',
-            data: lineData.hourlyData.map(h => h.achieved),
-            backgroundColor: bgColors,
-            borderRadius: 4,
-            order: 2
-          },
-          {
-            label: '目标',
-            data: lineData.hourlyData.map(h => h.target),
-            type: 'line',
-            borderColor: '#1a73e8',
-            borderWidth: 2,
-            borderDash: [5, 5],
-            pointRadius: 3,
-            pointBackgroundColor: '#1a73e8',
-            fill: false,
-            order: 1
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top', labels: { font: { size: 11 } } },
-          tooltip: {
-            callbacks: {
-              afterLabel: function(context) {
-                if (context.dataset.type === 'line') return '';
-                const hourIdx = context.dataIndex;
-                const h = lineData.hourlyData[hourIdx];
-                if (!h) return '';
-                let text = `型号: ${h.model}`;
-                if (h.reason) text += `\n原因: ${h.reason}`;
-                return text;
-              }
-            }
-          }
-        },
-        scales: {
-          y: { beginAtZero: true, title: { display: true, text: '数量', font: { size: 11 } } },
-          x: { title: { display: true, text: '时段', font: { size: 11 } } }
-        }
-      }
-    });
-    boardCharts.push(chart);
-  });
-}
-
-// 报表弹窗功能
-// 显示产能分析面板
-function showAnalysisPanel() {
-  const panel = document.getElementById('analysisPanel');
-  if (panel.style.display === 'none') {
-    panel.style.display = 'block';
-    // 设置默认日期为今天
-    const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('analysisStartDate').value = today;
-    document.getElementById('analysisEndDate').value = today;
-  } else {
-    panel.style.display = 'none';
-  }
-}
-
-// Replacement functions for generateReportImage and generateReasonSummary
-// These now work entirely client-side with Supabase
-
-// 生成产能报表 - 纯前端版本
-async function generateReportImage() {
-  const startDate = document.getElementById('analysisStartDate').value;
-  const endDate = document.getElementById('analysisEndDate').value;
-  
-  if (!startDate || !endDate) {
-    alert('请先选择开始和结束日期');
-    return;
-  }
-  
-  try {
-    // 从 Supabase 获取数据
-    const url = `${SUPABASE_URL}/rest/v1/production_records?record_date=gte.${startDate}&record_date=lte.${endDate}&select=*`;
-    const response = await fetch(url, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API 错误: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (!data || data.length === 0) {
-      alert('该日期范围没有数据');
-      return;
-    }
-    
-    // 获取线体信息
-    const linesResp = await fetch(`${SUPABASE_URL}/rest/v1/production_lines?select=*&is_active=eq.true&order=sort_order`, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      }
-    });
-    const lines = await linesResp.json();
-    
-    // 按线体+日期汇总
-    const lineDaily = {};
-    const lineTotal = {};
-    
-    data.forEach(record => {
-      const lineName = record.line_name || '';
-      const recordDate = record.record_date || '';
-      const achieved = record.achieved_value || 0;
-      const target = record.target_value || 0;
-      
-      const key = `${lineName}|||${recordDate}`;
-      if (!lineDaily[key]) lineDaily[key] = { achieved: 0, target: 0 };
-      lineDaily[key].achieved += achieved;
-      lineDaily[key].target += target;
-      
-      if (!lineTotal[lineName]) lineTotal[lineName] = { achieved: 0, target: 0 };
-      lineTotal[lineName].achieved += achieved;
-      lineTotal[lineName].target += target;
-    });
-    
-    // 排序
-    const dates = [...new Set(data.map(r => r.record_date))].sort();
-    const results = [];
-    
-    for (const lineName in lineTotal) {
-      const stats = lineTotal[lineName];
-      const rate = stats.target > 0 ? (stats.achieved / stats.target * 100) : 0;
-      const diff = stats.achieved - stats.target;
-      
-      // 提取班长
-      let leader = '';
-      const match = lineName.match(/（(.+?)）/);
-      if (match) leader = match[1];
-      
-      // 每日数据
-      const dailyData = [];
-      dates.forEach(d => {
-        const key = `${lineName}|||${d}`;
-        if (lineDaily[key] && lineDaily[key].target > 0) {
-          const da = lineDaily[key].achieved;
-          const dt = lineDaily[key].target;
-          const dr = dt > 0 ? (da / dt * 100) : 0;
-          dailyData.push({ date: d, achieved: da, target: dt, rate: dr });
-        }
-      });
-      
-      results.push({
-        lineName,
-        leader,
-        achieved: stats.achieved,
-        target: stats.target,
-        rate,
-        diff,
-        daily: dailyData
-      });
-    }
-    
-    results.sort((a, b) => b.rate - a.rate);
-    
-    // 总计
-    const totalAchieved = results.reduce((s, r) => s + r.achieved, 0);
-    const totalTarget = results.reduce((s, r) => s + r.target, 0);
-    const totalRate = totalTarget > 0 ? (totalAchieved / totalTarget * 100) : 0;
-    
-    // 构建 HTML 报表
-    const reportHtml = buildReportHtml(startDate, endDate, results, totalAchieved, totalTarget, totalRate);
-    
-    // 用 html2canvas 生成图片
-    const tempDiv = document.createElement('div');
-    tempDiv.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;background:#f0f2f5;';
-    tempDiv.innerHTML = reportHtml;
-    document.body.appendChild(tempDiv);
-    
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const resultCanvas = await html2canvas(tempDiv, {
-      scale: 2,
-      backgroundColor: '#f0f2f5',
-      useCORS: true,
-      logging: false
-    });
-    
-    document.body.removeChild(tempDiv);
-    
-    // 下载
-    const link = document.createElement('a');
-    link.download = `产能报表_${startDate}_至_${endDate}.png`;
-    link.href = resultCanvas.toDataURL('image/png');
-    link.click();
-    
-    alert('产能报表已生成！');
-    
-  } catch (error) {
-    console.error('生成报表失败:', error);
-    alert('生成报表失败: ' + error.message);
-  }
-}
-
-// 构建报表 HTML
-function buildReportHtml(startDate, endDate, results, totalAchieved, totalTarget, totalRate) {
-  const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
-  const rateColor = (rate) => rate >= 100 ? '#4caf50' : rate >= 90 ? '#ff9800' : '#f44336';
-  
-  let html = `
-    <div style="padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-      <h2 style="text-align:center;color:#1a73e8;margin-bottom:8px;font-size:24px;">📊 地刷车间产能报表</h2>
-      <p style="text-align:center;color:#666;margin-bottom:16px;font-size:14px;">${startDate} 至 ${endDate}</p>
-      
-      <div style="background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center;">
-        <div style="font-size:13px;opacity:0.85;">★ 总达成率 ★</div>
-        <div style="font-size:36px;font-weight:700;color:${rateColor(totalRate)};">${totalRate.toFixed(1)}%</div>
-        <div style="font-size:13px;opacity:0.85;margin-top:4px;">达成 ${totalAchieved.toLocaleString()} / 目标 ${totalTarget.toLocaleString()}</div>
-      </div>
-  `;
-  
-  results.forEach((r, i) => {
-    const medal = i < 3 ? `<span style="display:inline-block;width:28px;height:28px;border-radius:50%;background:${medalColors[i]};color:#333;text-align:center;line-height:28px;font-weight:700;font-size:14px;">${i+1}</span>` : `<span style="display:inline-block;width:28px;height:28px;border-radius:50%;background:#555;color:#fff;text-align:center;line-height:28px;font-weight:700;font-size:14px;">${i+1}</span>`;
-    
-    html += `
-      <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border-left:4px solid ${medalColors[i] || '#555'};">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            ${medal}
-            <span style="font-size:16px;font-weight:600;color:#333;">${r.lineName}</span>
-          </div>
-          <span style="font-size:20px;font-weight:700;color:${rateColor(r.rate)};">${r.rate.toFixed(1)}%</span>
-        </div>
-        <div style="font-size:13px;color:#666;margin-bottom:8px;">
-          达成 ${r.achieved.toLocaleString()} / 目标 ${r.target.toLocaleString()} | 
-          ${r.diff >= 0 ? `<span style="color:#4caf50;">超产 ${r.diff.toLocaleString()}</span>` : `<span style="color:#f44336;">落产 ${Math.abs(r.diff).toLocaleString()}</span>`}
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-    `;
-    
-    r.daily.forEach(d => {
-      const dayNum = d.date.split('-')[2];
-      html += `
-        <div style="background:#f5f5f5;border-radius:6px;padding:4px 8px;font-size:11px;text-align:center;min-width:50px;">
-          <div style="color:#888;">${parseInt(dayNum)}日</div>
-          <div style="color:${rateColor(d.rate)};font-weight:600;">${d.rate.toFixed(0)}%</div>
-        </div>
-      `;
-    });
-    
-    html += `</div></div>`;
-  });
-  
-  html += `<p style="text-align:center;color:#999;font-size:12px;margin-top:16px;">- 产线小时达成录入系统 -</p></div>`;
-  
-  return html;
-}
-
-async function generateReasonSummary() {
-  const startDate = document.getElementById('analysisStartDate').value;
-  const endDate = document.getElementById('analysisEndDate').value;
-  
-  if (!startDate || !endDate) {
-    alert('请先选择开始和结束日期');
-    return;
-  }
-  
-  try {
-    // 从 Supabase 获取数据
-    const url = `${SUPABASE_URL}/rest/v1/production_records?record_date=gte.${startDate}&record_date=lte.${endDate}&select=*`;
-    const response = await fetch(url, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API 错误: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (!data || data.length === 0) {
-      alert('该日期范围没有数据');
-      return;
-    }
-    
-    // 需要剔除的异常类别（只剔除产能目标，异常分析保留）
-    const EXCLUDE_CATEGORIES = ['返工', '试制试产', '支援'];
-    
-    // 计算每条线的总产量和达成（剔除返工/试制试产/支援）
-    const lineProduction = {};
-    let totalExcludedHours = 0;
-    
-    data.forEach(record => {
-      const lineName = record.line_name || '';
-      const target = record.target_value || 0;
-      const achieved = record.achieved_value || 0;
-      const reasonCategory = record.reason_category || '';
-      
-      if (!lineProduction[lineName]) {
-        lineProduction[lineName] = { target: 0, achieved: 0, excludedHours: 0 };
-      }
-      
-      // 剔除返工/试制试产/支援
-      if (EXCLUDE_CATEGORIES.includes(reasonCategory)) {
-        lineProduction[lineName].excludedHours++;
-        totalExcludedHours++;
-      } else {
-        lineProduction[lineName].target += target;
-        lineProduction[lineName].achieved += achieved;
-      }
-    });
-    
-    // 异常分析：包含所有未达标记录
-    const reasonRecords = data.filter(d => {
-      const target = d.target_value || 0;
-      const achieved = d.achieved_value || 0;
-      return target > 0 && achieved < target && achieved > 0;
-    });
-    
-    if (reasonRecords.length === 0) {
-      alert('该日期范围没有异常记录');
-      return;
-    }
-    
-    // 异常类别推断函数
-    function inferCategory(record) {
-      const reasonCategory = record.reason_category || '';
-      const reason = (record.reason || '').toLowerCase();
-      
-      if (reasonCategory) return reasonCategory;
-      
-      if (reason.includes('来料') || reason.includes('物料') || reason.includes('上盖来料') || (reason.includes('下盖') && (reason.includes('不良') || reason.includes('划伤')))) {
-        return '来料异常';
-      } else if (reason.includes('物流') || reason.includes('配送') || reason.includes('发料') || reason.includes('送料')) {
-        return '物流配送';
-      } else if (reason.includes('换型') || reason.includes('切换') || reason.includes('转产')) {
-        return '换型损失';
-      } else if (reason.includes('爬坡') || reason.includes('熟练') || reason.includes('不熟练') || reason.includes('适应') || reason.includes('新手')) {
-        return '爬坡损失';
-      } else if (reason.includes('设备') || reason.includes('故障') || reason.includes('测试') || reason.includes('UV') || reason.includes('点胶机') || reason.includes('镭雕机') || reason.includes('螺丝机') || reason.includes('螺钉机') || reason.includes('气密')) {
-        return '设备故障';
-      } else if (reason.includes('流水线') || reason.includes('线体') || reason.includes('回板') || reason.includes('夹爪')) {
-        return '流水线异常';
-      } else if (reason.includes('人员') || reason.includes('请假') || reason.includes('减编') || reason.includes('不稳定') || reason.includes('中暑')) {
-        return '人员异常';
-      } else if (reason) {
-        return '其他';
-      }
-      return '未填写';
-    }
-    
-    // 按线体+异常类别汇总
-    const lineStats = {};
-    
-    reasonRecords.forEach(record => {
-      const lineName = record.line_name || '';
-      const reason = record.reason || '';
-      const target = record.target_value || 0;
-      const achieved = record.achieved_value || 0;
-      const impact = target - achieved;
-      
-      // 损失工时 = 影响台数 / 目标值 × 1小时
-      const lostHours = target > 0 ? impact / target : 0;
-      
-      const cat = inferCategory(record);
-      
-      if (!lineStats[lineName]) {
-        lineStats[lineName] = {
-          categories: {},
-          totalLostHours: 0,
-          totalImpact: 0,
-          totalCount: 0
-        };
-      }
-      
-      if (!lineStats[lineName].categories[cat]) {
-        lineStats[lineName].categories[cat] = {
-          count: 0,
-          totalImpact: 0,
-          lostHours: 0,
-          details: []
-        };
-      }
-      
-      lineStats[lineName].categories[cat].count++;
-      lineStats[lineName].categories[cat].totalImpact += impact;
-      lineStats[lineName].categories[cat].lostHours += lostHours;
-      lineStats[lineName].categories[cat].details.push({
-        date: record.record_date,
-        hour: record.hour_slot,
-        reason: reason,
-        impact: impact,
-        lostHours: lostHours
-      });
-      
-      lineStats[lineName].totalLostHours += lostHours;
-      lineStats[lineName].totalImpact += impact;
-      lineStats[lineName].totalCount++;
-    });
-    
-    // 计算整体损失
-    let totalLostHours = 0, totalImpact = 0, totalCount = 0;
-    let totalTarget = 0, totalAchieved = 0;
-    
-    Object.values(lineStats).forEach(stats => {
-      totalLostHours += stats.totalLostHours;
-      totalImpact += stats.totalImpact;
-      totalCount += stats.totalCount;
-    });
-    
-    Object.values(lineProduction).forEach(p => {
-      totalTarget += p.target;
-      totalAchieved += p.achieved;
-    });
-    
-    const overallStats = {
-      totalTarget,
-      totalAchieved,
-      totalRate: totalTarget > 0 ? (totalAchieved / totalTarget * 100) : 0,
-      totalDiff: totalAchieved - totalTarget,
-      totalExcludedHours,
-      totalLostHours,
-      totalImpact,
-      totalCount
-    };
-    
-    // 构建 HTML
-    const html = buildReasonSummaryHtml(startDate, endDate, lineStats, lineProduction, overallStats);
-    
-    // 用 html2canvas 生成图片
-    const tempDiv = document.createElement('div');
-    tempDiv.style.cssText = 'position:absolute;left:-9999px;top:0;width:800px;background:#f5f5f5;';
-    tempDiv.innerHTML = html;
-    document.body.appendChild(tempDiv);
-    
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const resultCanvas = await html2canvas(tempDiv, {
-      scale: 2,
-      backgroundColor: '#f5f5f5',
-      useCORS: true,
-      logging: false
-    });
-    
-    document.body.removeChild(tempDiv);
-    
-    // 下载
-    const link = document.createElement('a');
-    link.download = `产量达成与异常损失报告_${startDate}_至_${endDate}.png`;
-    link.href = resultCanvas.toDataURL('image/png');
-    link.click();
-    
-    alert('产量达成与异常损失报告已生成！');
-    
-  } catch (error) {
-    console.error('生成报告失败:', error);
-    alert('生成报告失败: ' + error.message);
-  }
-}
-
-// 构建产量达成与异常损失报告 HTML（左右两栏布局）
-function buildReasonSummaryHtml(startDate, endDate, lineStats, lineProduction, overallStats) {
-  const colors = ['#FF6B6B', '#FFA07A', '#FFD700', '#87CEEB', '#98FB98', '#DDA0DD', '#F0E68C', '#B0C4DE', '#95a5a6', '#E6B89C'];
-  const rateColor = (rate) => rate >= 100 ? '#4caf50' : rate >= 90 ? '#ff9800' : '#f44336';
-  
-  // 按达成率排序线体
-  const sortedLines = Object.entries(lineProduction).sort((a, b) => {
-    const rateA = a[1].target > 0 ? a[1].achieved / a[1].target : 0;
-    const rateB = b[1].target > 0 ? b[1].achieved / b[1].target : 0;
-    return rateB - rateA;
-  });
-  
-  // 异常分类总体统计
-  const categoryStats = {};
-  Object.values(lineStats).forEach(stats => {
-    Object.entries(stats.categories).forEach(([cat, data]) => {
-      if (!categoryStats[cat]) categoryStats[cat] = { count: 0, impact: 0, lostHours: 0 };
-      categoryStats[cat].count += data.count;
-      categoryStats[cat].impact += data.totalImpact;
-      categoryStats[cat].lostHours += data.lostHours;
-    });
-  });
-  const sortedCats = Object.entries(categoryStats).sort((a, b) => b[1].lostHours - a[1].lostHours);
-  
-  const medals = ['🥇', '🥈', '🥉'];
-  
-  let html = `
-    <div style="padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8f9fa;">
-      <h2 style="text-align:center;color:#333;margin-bottom:8px;font-size:26px;font-weight:700;">地刷车间${startDate.slice(5)}至${endDate.slice(5)}产量达成与异常损失报告</h2>
-      
-      <!-- 总体统计横幅 -->
-      <div style="background:#4a90d9;color:#fff;border-radius:10px;padding:16px;margin-bottom:20px;text-align:center;">
-        <div style="font-size:16px;font-weight:600;">有效目标: ${overallStats.totalTarget.toLocaleString()}台 | 有效达成: ${overallStats.totalAchieved.toLocaleString()}台 | 达成率: ${overallStats.totalRate.toFixed(1)}% | 超产/欠产: ${overallStats.totalDiff >= 0 ? '+' : ''}${overallStats.totalDiff.toLocaleString()}台</div>
-        <div style="font-size:14px;opacity:0.9;margin-top:6px;">已剔除${overallStats.totalExcludedHours}小时(返工/试制试产/支援) | 异常${overallStats.totalCount}次 | 影响${overallStats.totalImpact.toLocaleString()}台 | 损失${overallStats.totalLostHours.toFixed(2)}小时</div>
-      </div>
-      
-      <!-- 左右两栏 -->
-      <div style="display:flex;gap:20px;margin-bottom:20px;">
-        <!-- 左侧：各线体达成情况 -->
-        <div style="flex:1;">
-          <h3 style="font-size:16px;color:#333;margin-bottom:12px;">各线体产量达成情况（已剔除返工/试制试产/支援）</h3>
-          <table style="width:100%;border-collapse:collapse;font-size:14px;">
-            <thead>
-              <tr style="background:#4a90d9;color:#fff;">
-                <th style="padding:10px 8px;text-align:center;border:1px solid #fff;">排名</th>
-                <th style="padding:10px 8px;text-align:center;border:1px solid #fff;">线体</th>
-                <th style="padding:10px 8px;text-align:center;border:1px solid #fff;">目标</th>
-                <th style="padding:10px 8px;text-align:center;border:1px solid #fff;">达成</th>
-                <th style="padding:10px 8px;text-align:center;border:1px solid #fff;">达成率</th>
-                <th style="padding:10px 8px;text-align:center;border:1px solid #fff;">超产/欠产</th>
-              </tr>
-            </thead>
-            <tbody>
-  `;
-  
-  sortedLines.forEach(([lineName, production], idx) => {
-    const rate = production.target > 0 ? (production.achieved / production.target * 100) : 0;
-    const diff = production.achieved - production.target;
-    const medal = idx < 3 ? medals[idx] : `${idx + 1}`;
-    const bg = idx % 2 === 0 ? '#f5f5f5' : '#ffffff';
-    
-    html += `
-              <tr>
-                <td style="padding:10px 8px;text-align:center;background:${bg};border:1px solid #ddd;">${medal}</td>
-                <td style="padding:10px 8px;text-align:left;background:${bg};border:1px solid #ddd;font-weight:600;">${lineName}</td>
-                <td style="padding:10px 8px;text-align:center;background:${bg};border:1px solid #ddd;">${production.target.toLocaleString()}</td>
-                <td style="padding:10px 8px;text-align:center;background:${bg};border:1px solid #ddd;">${production.achieved.toLocaleString()}</td>
-                <td style="padding:10px 8px;text-align:center;background:${bg};border:1px solid #ddd;font-weight:700;color:${rateColor(rate)};">${rate.toFixed(1)}%</td>
-                <td style="padding:10px 8px;text-align:center;background:${diff >= 0 ? '#4caf50' : '#f44336'};border:1px solid #ddd;color:#fff;font-weight:600;">${diff >= 0 ? '+' : ''}${diff.toLocaleString()}</td>
-              </tr>
-    `;
-  });
-  
-  html += `
-            </tbody>
-          </table>
-        </div>
         
-        <!-- 右侧：异常分类统计 -->
-        <div style="flex:1;">
-          <h3 style="font-size:16px;color:#333;margin-bottom:12px;">异常分类损失工时统计（包含所有异常）</h3>
-          <table style="width:100%;border-collapse:collapse;font-size:14px;">
-            <thead>
-              <tr style="background:#4a90d9;color:#fff;">
-                <th style="padding:10px 8px;text-align:center;border:1px solid #fff;">异常类别</th>
-                <th style="padding:10px 8px;text-align:center;border:1px solid #fff;">次数</th>
-                <th style="padding:10px 8px;text-align:center;border:1px solid #fff;">影响台数</th>
-                <th style="padding:10px 8px;text-align:center;border:1px solid #fff;">损失工时</th>
-                <th style="padding:10px 8px;text-align:center;border:1px solid #fff;">占比</th>
-              </tr>
-            </thead>
-            <tbody>
-  `;
-  
-  sortedCats.forEach(([cat, data], idx) => {
-    const pct = overallStats.totalLostHours > 0 ? (data.lostHours / overallStats.totalLostHours * 100) : 0;
-    const bg = colors[idx % colors.length];
-    
-    html += `
-              <tr>
-                <td style="padding:10px 8px;text-align:center;background:${bg};border:1px solid #fff;color:#333;font-weight:600;">${cat}</td>
-                <td style="padding:10px 8px;text-align:center;background:${bg};border:1px solid #fff;">${data.count}</td>
-                <td style="padding:10px 8px;text-align:center;background:${bg};border:1px solid #fff;">${data.impact.toLocaleString()}</td>
-                <td style="padding:10px 8px;text-align:center;background:${bg};border:1px solid #fff;">${data.lostHours.toFixed(2)}h</td>
-                <td style="padding:10px 8px;text-align:center;background:${bg};border:1px solid #fff;">${pct.toFixed(1)}%</td>
-              </tr>
-    `;
-  });
-  
-  html += `
-            </tbody>
-          </table>
+        // 切换视图
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('btnDayView').classList.toggle('active', view === 'day');
+            document.getElementById('btnMonthView').classList.toggle('active', view === 'month');
+            document.getElementById('dayControls').style.display = view === 'day' ? 'flex' : 'none';
+            document.getElementById('monthControls').style.display = view === 'month' ? 'flex' : 'none';
+            document.getElementById('dayView').classList.toggle('active', view === 'day');
+            document.getElementById('monthView').classList.toggle('active', view === 'month');
+            
+            if (view === 'day') {
+                loadDayData();
+            } else {
+                loadMonthData();
+            }
+        }
+        
+        // 加载日数据
+        async function loadDayData() {
+            const date = document.getElementById('datePicker').value;
+            const content = document.getElementById('dayContent');
+            
+            try {
+                const response = await fetch(`${DATA_BASE_URL}${date}.json?t=${Date.now()}`);
+                if (!response.ok) throw new Error('数据不存在');
+                const data = await response.json();
+                renderDayView(data, date);
+            } catch (e) {
+                content.innerHTML = `<div class="no-data">📭 ${date} 暂无数据</div>`;
+            }
+        }
+        
+        // 渲染日视图
+        function renderDayView(data, date) {
+            const content = document.getElementById('dayContent');
+            const hours = ['08','09','10','11','12','13','14','15','16','17','18','19'];
+            
+            let html = `
+                <div class="summary-cards">
+                    <div class="card">
+                        <div class="label">${LINES['DS01XXCJ']} 总产量</div>
+                        <div class="value" style="color: #667eea;">${data.lines['DS01XXCJ']?.total || 0}</div>
+                        <div class="sub">GOOD 产品数</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">${LINES['DS02XXCJ']} 总产量</div>
+                        <div class="value" style="color: #764ba2;">${data.lines['DS02XXCJ']?.total || 0}</div>
+                        <div class="sub">GOOD 产品数</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">合计产量</div>
+                        <div class="value" style="color: #f093fb;">${data.total}</div>
+                        <div class="sub">两条线总计</div>
+                    </div>
+                </div>
+            `;
+            
+            for (const [wc, info] of Object.entries(data.lines)) {
+                const hourly = info.hourly || {};
+                const maxVal = Math.max(...Object.values(hourly), 1);
+                
+                html += `
+                    <div class="line-section">
+                        <div class="line-title">📊 ${info.name}（${wc}）- 小时产量分布</div>
+                        <div class="chart-container">
+                `;
+                
+                for (const h of hours) {
+                    const val = hourly[h] || 0;
+                    if (val > 0) {
+                        const height = Math.round(val / maxVal * 100);
+                        html += `
+                            <div class="bar-group">
+                                <div class="bar" style="height: ${height}%;">
+                                    <div class="bar-value">${val}</div>
+                                </div>
+                                <div class="bar-label">${h}:00</div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                html += `
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>时段</th>
+                `;
+                
+                for (const h of hours) {
+                    if ((hourly[h] || 0) > 0) {
+                        html += `<th>${h}:00</th>`;
+                    }
+                }
+                
+                html += `
+                                    <th>合计</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>产量</strong></td>
+                `;
+                
+                for (const h of hours) {
+                    const val = hourly[h] || 0;
+                    if (val > 0) {
+                        html += `<td>${val}</td>`;
+                    }
+                }
+                
+                html += `
+                                    <td class="total-col">${info.total}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            
+            content.innerHTML = html;
+        }
+        
+        // 加载月数据
+        async function loadMonthData() {
+            const month = document.getElementById('monthPicker').value;
+            const [year, mon] = month.split('-');
+            const content = document.getElementById('monthContent');
+            
+            // 获取该月所有日期
+            const daysInMonth = new Date(year, mon, 0).getDate();
+            const dates = [];
+            for (let d = 1; d <= daysInMonth; d++) {
+                dates.push(`${year}-${mon}-${String(d).padStart(2, '0')}`);
+            }
+            
+            // 加载所有日期的数据
+            const monthData = {
+                year: parseInt(year),
+                month: parseInt(mon),
+                days: [],
+                lines: {
+                    'DS01XXCJ': { name: LINES['DS01XXCJ'], total: 0, daily: {} },
+                    'DS02XXCJ': { name: LINES['DS02XXCJ'], total: 0, daily: {} }
+                }
+            };
+            
+            for (const date of dates) {
+                try {
+                    const response = await fetch(`${DATA_BASE_URL}${date}.json?t=${Date.now()}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        monthData.days.push(date);
+                        for (const wc of Object.keys(LINES)) {
+                            if (data.lines[wc]) {
+                                monthData.lines[wc].total += data.lines[wc].total;
+                                monthData.lines[wc].daily[date] = data.lines[wc].total;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // 跳过无数据的日期
+                }
+            }
+            
+            renderMonthView(monthData);
+        }
+        
+        // 渲染月视图
+        function renderMonthView(data) {
+            const content = document.getElementById('monthContent');
+            
+            if (data.days.length === 0) {
+                content.innerHTML = `<div class="no-data">📭 ${data.year}年${data.month}月 暂无数据</div>`;
+                return;
+            }
+            
+            let html = `
+                <div class="summary-cards">
+                    <div class="card">
+                        <div class="label">${data.year}年${data.month}月 工作天数</div>
+                        <div class="value" style="color: #667eea;">${data.days.length}</div>
+                        <div class="sub">天</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">${LINES['DS01XXCJ']} 月总产量</div>
+                        <div class="value" style="color: #667eea;">${data.lines['DS01XXCJ'].total}</div>
+                        <div class="sub">日均 ${Math.round(data.lines['DS01XXCJ'].total / data.days.length)}</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">${LINES['DS02XXCJ']} 月总产量</div>
+                        <div class="value" style="color: #764ba2;">${data.lines['DS02XXCJ'].total}</div>
+                        <div class="sub">日均 ${Math.round(data.lines['DS02XXCJ'].total / data.days.length)}</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">月合计产量</div>
+                        <div class="value" style="color: #f093fb;">${data.lines['DS01XXCJ'].total + data.lines['DS02XXCJ'].total}</div>
+                        <div class="sub">两条线总计</div>
+                    </div>
+                </div>
+                
+                <div class="line-section">
+                    <div class="line-title">📊 每日产量明细</div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>星期</th>
+                                <th>${LINES['DS01XXCJ']}</th>
+                                <th>${LINES['DS02XXCJ']}</th>
+                                <th>合计</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+            
+            for (const date of data.days) {
+                const d = new Date(date);
+                const weekDay = weekDays[d.getDay()];
+                const ds01 = data.lines['DS01XXCJ'].daily[date] || 0;
+                const ds02 = data.lines['DS02XXCJ'].daily[date] || 0;
+                const total = ds01 + ds02;
+                
+                html += `
+                    <tr>
+                        <td>${date}</td>
+                        <td>周${weekDay}</td>
+                        <td>${ds01}</td>
+                        <td>${ds02}</td>
+                        <td class="total-col">${total}</td>
+                    </tr>
+                `;
+            }
+            
+            // 合计行
+            html += `
+                    <tr style="background: #f0f0f0; font-weight: bold;">
+                        <td colspan="2">合计</td>
+                        <td class="total-col">${data.lines['DS01XXCJ'].total}</td>
+                        <td class="total-col">${data.lines['DS02XXCJ'].total}</td>
+                        <td class="total-col">${data.lines['DS01XXCJ'].total + data.lines['DS02XXCJ'].total}</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-      </div>
-      
-      <!-- 各线体重点异常分析 -->
-      <h3 style="font-size:18px;color:#d32f2f;margin-bottom:16px;">📋 各线体重点异常分析</h3>
-  `;
-  
-  Object.entries(lineStats).forEach(([lineName, stats], lineIdx) => {
-    const sortedLineCats = Object.entries(stats.categories).sort((a, b) => b[1].lostHours - a[1].lostHours);
-    
-    html += `
-      <div style="background:${colors[lineIdx % colors.length]};border-radius:8px;padding:12px 16px;margin-bottom:16px;">
-        <div style="font-size:15px;font-weight:700;color:#fff;">${lineName}：总损失${stats.totalLostHours.toFixed(2)}小时</div>
-    `;
-    
-    sortedLineCats.slice(0, 3).forEach(([cat, data], catIdx) => {
-      const pct = stats.totalLostHours > 0 ? (data.lostHours / stats.totalLostHours * 100) : 0;
-      
-      // 典型案例（按工时排序取第一个）
-      const topCase = data.details.length > 0 ? data.details.sort((a, b) => b.lostHours - a.lostHours)[0] : null;
-      const caseText = topCase ? `典型：${topCase.date?.slice(5) || ''} ${topCase.hour?.slice(0, 5) || ''} - ${topCase.reason?.slice(0, 35) || ''}... 损失${topCase.lostHours.toFixed(2)}小时` : '';
-      
-      html += `
-        <div style="margin-top:8px;">
-          <div style="font-size:14px;color:#333;font-weight:600;">${catIdx + 1}. ${cat}：${data.count}次，损失${data.lostHours.toFixed(2)}小时（占比${pct.toFixed(1)}%）</div>
-          ${caseText ? `<div style="font-size:12px;color:#666;margin-top:4px;margin-left:16px;">${caseText}</div>` : ''}
-        </div>
-      `;
-    });
-    
-    html += `</div>`;
-  });
-  
-  html += `
-      <p style="text-align:center;color:#999;font-size:12px;margin-top:16px;">
-        损失工时计算：影响台数 / 目标值 × 1小时 | 产能目标已剔除返工/试制试产/支援，异常分析包含所有类别<br>
-        - 产线小时达成录入系统 -
-      </p>
-    </div>
-  `;
-  
-  return html;
-}
-
-
-// 生成看板长图
-async function generateBoardImage() {
-  const boardPage = document.getElementById('boardPage');
-  const boardContent = document.getElementById('boardContent');
-  
-  if (!boardContent.innerHTML.trim() || boardContent.querySelector('.empty-state')) {
-    alert('请先刷新看板数据');
-    return;
-  }
-  
-  // 临时隐藏按钮
-  const buttons = boardPage.querySelectorAll('button');
-  buttons.forEach(b => b.style.display = 'none');
-  
-  try {
-    const dateStr = document.getElementById('boardDate').value;
-    
-    // 关键：先将原始 canvas 转换为 img（在克隆之前！）
-    const originalCanvases = document.querySelectorAll('#boardContent canvas');
-    const canvasMap = new Map();
-    
-    for (const canvas of originalCanvases) {
-      try {
-        const dataUrl = canvas.toDataURL('image/png');
-        const img = document.createElement('img');
-        img.src = dataUrl;
-        img.style.cssText = canvas.style.cssText;
-        img.style.width = canvas.style.width || '100%';
-        img.style.height = canvas.style.height || '220px';
-        canvasMap.set(canvas, img);
-        // 临时替换
-        canvas.parentNode.replaceChild(img, canvas);
-      } catch (e) {
-        console.error('转换 canvas 失败:', e);
-      }
-    }
-    
-    // 等待图片加载
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // 现在克隆（此时 canvas 已被替换为 img）
-    const contentClone = boardContent.cloneNode(true);
-    
-    // 恢复原始 canvas（把 img 换回去）
-    for (const [canvas, img] of canvasMap) {
-      if (img.parentNode) {
-        img.parentNode.replaceChild(canvas, img);
-      }
-    }
-    
-    // 创建临时容器
-    const tempContainer = document.createElement('div');
-    tempContainer.style.cssText = 'position:absolute;left:-9999px;top:0;width:600px;background:#f0f2f5;padding:20px;';
-    
-    // 添加标题
-    const titleDiv = document.createElement('div');
-    titleDiv.innerHTML = `
-      <h2 style="text-align:center;color:#1a73e8;margin-bottom:20px;font-size:24px">📊 产线小时达成看板</h2>
-      <p style="text-align:center;color:#666;margin-bottom:20px">${dateStr}</p>
-    `;
-    tempContainer.appendChild(titleDiv);
-    tempContainer.appendChild(contentClone);
-    
-    document.body.appendChild(tempContainer);
-    
-    // 截图
-    const resultCanvas = await html2canvas(tempContainer, {
-      scale: 2,
-      backgroundColor: '#f0f2f5',
-      useCORS: true,
-      logging: false
-    });
-    
-    document.body.removeChild(tempContainer);
-    
-    // 下载
-    const link = document.createElement('a');
-    link.download = `看板长图_${dateStr}.png`;
-    link.href = resultCanvas.toDataURL('image/png');
-    link.click();
-    
-    alert('长图已生成并下载！');
-  } catch (error) {
-    console.error('生成长图失败:', error);
-    alert('生成长图失败，请重试');
-  } finally {
-    buttons.forEach(b => b.style.display = '');
-  }
-}
-
-// 页面加载时初始化
-window.onload = init;
-</script>
+            `;
+            
+            content.innerHTML = html;
+        }
+    </script>
 </body>
 </html>
