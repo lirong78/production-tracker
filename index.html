@@ -214,10 +214,28 @@
         let currentView = 'day';
         
         // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const today = new Date().toISOString().split('T')[0];
-            document.getElementById('datePicker').value = today;
             document.getElementById('monthPicker').value = today.substring(0, 7);
+            
+            // 查找最近有数据的日期
+            let targetDate = today;
+            let found = false;
+            for (let i = 0; i < 30; i++) {
+                const checkDate = new Date();
+                checkDate.setDate(checkDate.getDate() - i);
+                const dateStr = checkDate.toISOString().split('T')[0];
+                try {
+                    const r = await fetch(`${DATA_BASE_URL}${dateStr}.json`, {method: 'HEAD'});
+                    if (r.ok) {
+                        targetDate = dateStr;
+                        found = true;
+                        break;
+                    }
+                } catch(e) {}
+            }
+            
+            document.getElementById('datePicker').value = targetDate;
             loadDayData();
         });
         
